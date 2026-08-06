@@ -1,0 +1,25 @@
+# compose/lm-studio.yaml — LM Studio as cockpit / warm fallback (SOW §D.2)
+# NOT a dependency of Hermes, the eval harness, or any Owner automation.
+# Migrated from ~/lm-studio/compose.yaml with the broken ./config path fixed:
+# the real populated LM Studio HOME is ${LM_STUDIO_HOME} (=/home/norbert/config),
+# not ~/lm-studio/config (which did not exist).
+#
+# NOTE: the native desktop app (/opt/LM-Studio) is also installed and is the
+# primary cockpit on this host; this Compose service is the containerised
+# fallback for remote use over the tailnet. Vulkan runtime only (§D.2: the
+# ROCm runtime is broken on gfx1151).
+services:
+  lm-studio:
+    image: lscr.io/linuxserver/lm-studio:latest
+    container_name: lm-studio
+    environment:
+      - PUID=${PUID:-1000}
+      - PGID=${PGID:-1000}
+      - TZ=${TZ:-Asia/Shanghai}
+    volumes:
+      - ${LM_STUDIO_HOME:-/home/norbert/config}:/config
+    ports:
+      - "3000:3000"   # Web / desktop workspace GUI
+      - "3001:3001"   # Local LLM API endpoint
+    shm_size: "2gb"
+    restart: unless-stopped

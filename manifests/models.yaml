@@ -1,0 +1,96 @@
+# =============================================================================
+# manifests/models.yaml — model manifest (SOW §B.2)
+# Weights are NEVER in the repo. Each alias maps to a downloadable file with a
+# verified SHA256. A clean rebuild fetches by url + verifies sha256.
+# `status` reflects 2026-08-02.
+# =============================================================================
+
+defaults:
+  backend: vulkan          # Mesa RADV (§D.5)
+  fa: auto                 # per-model verified; see fa_ok below
+  kv: "-ctk q8_0 -ctv q8_0"
+  ub: 512
+  speculative: off         # binding figures measured with spec-decode OFF (§I.1)
+
+aliases:
+
+  # --- reasoning-max (§I.2: >=40 tok/s batch / >=28 eco) ---
+  reasoning-max:
+    model: gpt-oss-120b
+    quant: MXFP4
+    footprint_gb: ~60
+    status: downloading    # 11.4/60 GB on 2026-08-02 (LM Studio .part shards)
+    source: lmstudio-community/gpt-oss-120b-GGUF
+    files:
+      - name: gpt-oss-120b-MXFP4-00001-of-00002.gguf
+        url: TODO_VERIFY   # confirm exact HF url before rebuild
+        sha256: PENDING    # compute once download completes
+      - name: gpt-oss-120b-MXFP4-00002-of-00002.gguf
+        url: TODO_VERIFY
+        sha256: PENDING
+    fa_ok: UNVERIFIED      # verify -fa at load (§D.5)
+    notes: >
+      Also satisfies M1 line 4 ("60 GB+ model loads without OOM") once complete.
+      ~80 GB VRAM was free after loading a 14 GB model, so OOM risk is negligible.
+
+  # --- utility-fast (§I.2: >=55 batch / >=45 eco) — PRESENT ---
+  utility-fast:
+    model: gemma-4-26B-A4B-it-QAT
+    quant: Q4_0
+    footprint_gb: 13.45
+    status: present
+    source: lmstudio-community/gemma-4-26B-A4B-it-QAT-GGUF
+    files:
+      - name: gemma-4-26B-A4B-it-QAT-Q4_0.gguf
+        url: TODO_VERIFY
+        sha256: a586dac572e606b1f2ad0011f7465aa1dffdb0f6516c5b5809fab35857865389
+      - name: mmproj-gemma-4-26B-A4B-it-QAT-BF16.gguf   # vision projector
+        url: TODO_VERIFY
+        sha256: 06429fa96309e7cf253627f09f10eee06bd74858f723e06ad09fb66d101597fd
+    fa_ok: true            # verified 2026-08-02 (66.7 tok/s, no crash with -fa 1)
+    preview_tok_s: 66.7    # batch profile, LM Studio llama.cpp 2.27.1 (indicative, not binding)
+
+  # --- doc-vision (§I.2: >=25 batch, eco=—) — PRESENT (compact VLM) ---
+  doc-vision:
+    model: gemma-4-E4B-it
+    quant: Q4_K_M
+    footprint_gb: 4.97
+    status: present
+    source: lmstudio-community/gemma-4-E4B-it-GGUF
+    files:
+      - name: gemma-4-E4B-it-Q4_K_M.gguf
+        url: TODO_VERIFY
+        sha256: 0ffb122c8b6921f13cbc34186e052524d0b5803b17f4867b7197a561400b3770
+      - name: mmproj-gemma-4-E4B-it-BF16.gguf
+        url: TODO_VERIFY
+        sha256: bdfc4935857658dfdc8d1adebfa3897c2fec8b3323410f4f73ade36d6efa02be
+    fa_ok: UNVERIFIED
+    notes: >
+      §I.2/B.5 do not pin a specific doc-VLM, only a compact vision-capable
+      document model with JSON-schema output. gemma-4-E4B + mmproj qualifies.
+
+  # --- utility-embed (§D.6: bge-m3 class) — MISSING ---
+  utility-embed:
+    model: bge-m3
+    quant: F16              # ~1.2 GB (Q8_0 ~0.6 GB acceptable)
+    footprint_gb: 1.2
+    status: missing
+    source: TODO            # community GGUF of BAAI/bge-m3
+    files:
+      - name: bge-m3.gguf
+        url: TODO_VERIFY
+        sha256: PENDING
+    notes: nomic-embed-text-v1.5 is present locally but is NOT bge-m3 class.
+
+  # --- eval-only (not a SOW alias; kept for the Owner's eval harness §B.8) ---
+  eval/qwen3.6-35b-a3b:
+    model: qwen3.6-35b-a3b
+    quant: Q4_K_M
+    footprint_gb: 19.71
+    status: present
+    source: lmstudio-community/Qwen3.6-35B-A3B-GGUF
+    files:
+      - name: Qwen3.6-35B-A3B-Q4_K_M.gguf
+        sha256: 4ac6a06bce551257267f49ad2226f8671a22519ccc1a4dde9d5b433d1f2a410d
+      - name: mmproj-Qwen3.6-35B-A3B-BF16.gguf
+        sha256: e5c205cec2fd28f66c3895e4040021ab994b860323c3db8531640305ff49b322

@@ -1,0 +1,57 @@
+# =============================================================================
+# /srv/z13 state-root .gitignore  (SOW §B.2)
+# Weights and secrets are NEVER committed. Weights live in manifests/models.yaml
+# (URL + SHA256); secrets live in .env / age-encrypted form.
+# =============================================================================
+
+# --- Model weights (track via manifests/models.yaml instead) ---
+*.gguf
+*.safetensors
+*.bin
+*.pt
+*.onnx
+mmproj-*
+models/
+
+# --- Secrets (hold in .env / age-encrypted; never plaintext in git) ---
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+*.crt
+age/
+keys/
+.gnupg/
+cc-switch*
+.claude.json
+*credentials*
+*token*
+secrets/
+
+# --- Build artifacts (tools/llama.cpp is cloned + built, not tracked) ---
+tools/llama.cpp/
+tools/**/build/
+**/build/
+*.o
+*.so
+*.a
+
+# --- Raw run artifacts (soak CSVs, bench dumps); summaries go in runbook/ ---
+runs/
+*.log
+*.tmp
+*.part
+
+# --- Live databases (§G.3: never commit an open DB file) ---
+store/*.sqlite
+store/*.db
+store/*.db-wal
+store/*.db-shm
+!store/.gitkeep
+
+# --- Editor / OS ---
+.vscode/
+.idea/
+*~
+.DS_Store
