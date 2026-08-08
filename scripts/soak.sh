@@ -24,7 +24,7 @@ DUR="${3:-1800}"
 case "$alias_" in
   utility-fast)  M="$MODELS_ROOT/gemma-4-26B-A4B-it-QAT-GGUF/gemma-4-26B-A4B-it-QAT-Q4_0.gguf"; FA=auto ;;
   doc-vision)    M="$MODELS_ROOT/gemma-4-E4B-it-GGUF/gemma-4-E4B-it-Q4_K_M.gguf";             FA=auto ;;
-  reasoning-max) M="$MODELS_ROOT/gpt-oss-120b-GGUF/gpt-oss-120b-MXFP4.gguf";                   FA=auto ;;
+  reasoning-max) M="$MODELS_ROOT/gpt-oss-120b-GGUF/gpt-oss-120b-MXFP4-00001-of-00002.gguf";                   FA=auto ;;
   *) echo "unknown alias"; exit 1 ;;
 esac
 [ -x "$BIN/llama-server" ] || { echo "build missing"; exit 1; }

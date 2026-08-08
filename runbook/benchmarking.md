@@ -46,19 +46,32 @@ Decode targets are binding from M1. Prefill and TTFT are **recorded at M1**; wit
 | TTFT @ 8192 | 9,410 ms | recorded |
 | FA | auto (ran clean) | §D.5 |
 
-### reasoning-max — gpt-oss-120B MXFP4
-**PENDING** — model still downloading (11.4 / ~60 GB on 2026-08-02). Also satisfies
-M1 line 4 (60 GB+ loads without OOM) once complete; ~80 GB VRAM was free after loading
-a 14 GB model, so OOM risk is negligible.
+### reasoning-max — gpt-oss-120B MXFP4  (batch + eco, 117 B params, 59.02 GiB)
+| metric | batch | eco | §I.2 |
+|---|---|---|---|
+| decode tg128 | **47.16 tok/s** | **47.26 tok/s** | ≥40 / ≥28 ✅ |
+| decode tg512 | 45.88 | — | ≥40 ✅ |
+| prefill pp4096 | 312 tok/s | — | recorded |
+| TTFT @ 8192 | 29,303 ms | — | recorded |
+| FA | auto (clean) | — | §D.5 |
+
+Loaded fully on GPU (`ngl 999`) **without OOM** → M1 line 4 ✅. Eco ≈ batch because
+MoE decode is memory-bandwidth-bound, not power-bound (§I.3); eco decode measured
+via llama-bench under the eco profile.
 
 ### Soak (in-soak steady-state) — `scripts/soak.sh` → `runs/*.summary.txt`
-30-min batch + eco soaks for utility-fast run on 2026-08-03; steady-state decode +
-§I.5 W/°C brackets recorded in `power-profiles.md` and `vault/audits/`.
+30-min batch + eco soaks for utility-fast completed 2026-08-07; both profiles hold
+their §I.5 bracket and utility-fast clears both decode targets in-soak:
+- batch: PPT ~58.8 W (flat cap 60), GPU 80.7 °C, **decode 57.2 tok/s** (≥55 ✅)
+- eco:   PPT ~34.1 W (flat cap 35), GPU 69.5 °C, **decode 48.9 tok/s** (≥45 ✅)
+Brackets + procedure in `power-profiles.md`.
 
 ## §I.4 floor proposals (within 5 working days of M1)
 - utility-fast prefill floor: ≥ 90 % × 961 = **≥ 865 tok/s** (proposed)
 - utility-fast TTFT floor: ≤ 110 % × 12,591 = **≤ 13,850 ms** (proposed; lower is better)
 - doc-vision prefill floor: ≥ 90 % × 1405 = **≥ 1265 tok/s** (proposed)
 - doc-vision TTFT floor: ≤ 110 % × 9,410 = **≤ 10,350 ms** (proposed)
+- reasoning-max prefill floor: ≥ 90 % × 312 = **≥ 281 tok/s** (proposed)
+- reasoning-max TTFT floor: ≤ 110 % × 29,303 = **≤ 32,235 ms** (proposed; lower is better)
 - reasoning-max floors: set after its first measurement.
 Owner sign-off fixes these.

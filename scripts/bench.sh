@@ -18,7 +18,7 @@ alias_="${1:?usage: bench.sh <utility-fast|doc-vision|reasoning-max>}"
 case "$alias_" in
   utility-fast) M="$MODELS_ROOT/gemma-4-26B-A4B-it-QAT-GGUF/gemma-4-26B-A4B-it-QAT-Q4_0.gguf"; FA=on; T_BATCH=55; T_ECO=45 ;;
   doc-vision)   M="$MODELS_ROOT/gemma-4-E4B-it-GGUF/gemma-4-E4B-it-Q4_K_M.gguf";             FA=auto; T_BATCH=25; T_ECO=0  ;;
-  reasoning-max) M="$MODELS_ROOT/gpt-oss-120b-GGUF/gpt-oss-120b-MXFP4.gguf";                  FA=auto; T_BATCH=40; T_ECO=28 ;;
+  reasoning-max) M="$MODELS_ROOT/gpt-oss-120b-GGUF/gpt-oss-120b-MXFP4-00001-of-00002.gguf"; FA=auto; T_BATCH=40; T_ECO=28 ;;
   *) echo "unknown alias: $alias_"; exit 1 ;;
 esac
 [ -f "$M" ] || { echo "model not found: $M"; exit 1; }

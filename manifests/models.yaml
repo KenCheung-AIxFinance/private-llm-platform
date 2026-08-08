@@ -18,20 +18,21 @@ aliases:
   reasoning-max:
     model: gpt-oss-120b
     quant: MXFP4
-    footprint_gb: ~60
-    status: downloading    # 11.4/60 GB on 2026-08-02 (LM Studio .part shards)
+    footprint_gb: 59.0
+    status: present          # download completed 2026-08-02 (~59 GB, 2 shards)
     source: lmstudio-community/gpt-oss-120b-GGUF
     files:
       - name: gpt-oss-120b-MXFP4-00001-of-00002.gguf
-        url: TODO_VERIFY   # confirm exact HF url before rebuild
-        sha256: PENDING    # compute once download completes
+        url: TODO_VERIFY     # confirm exact HF url before rebuild
+        sha256: 01d8a3bc7efdaa331112e8a0a42ec9046fcee2a1dce910452aafaccb996759f3
       - name: gpt-oss-120b-MXFP4-00002-of-00002.gguf
         url: TODO_VERIFY
-        sha256: PENDING
-    fa_ok: UNVERIFIED      # verify -fa at load (§D.5)
+        sha256: b7bf9fba295115d0e32951ce54911b3020dd92459b88a3908ad58479be6f7676
+    fa_ok: auto              # loaded clean with -fa auto (§D.5); no crash
     notes: >
-      Also satisfies M1 line 4 ("60 GB+ model loads without OOM") once complete.
-      ~80 GB VRAM was free after loading a 14 GB model, so OOM risk is negligible.
+      Loaded fully on GPU (ngl 999) without OOM on 2026-08-03 -> M1 line 4 PASS.
+      Batch decode 47.2 tok/s (>=40), eco 47.3 (>=28); prefill 312 tok/s;
+      TTFT@8192 29303 ms. 117 B params, 59.02 GiB on disk.
 
   # --- utility-fast (§I.2: >=55 batch / >=45 eco) — PRESENT ---
   utility-fast:
@@ -64,7 +65,7 @@ aliases:
       - name: mmproj-gemma-4-E4B-it-BF16.gguf
         url: TODO_VERIFY
         sha256: bdfc4935857658dfdc8d1adebfa3897c2fec8b3323410f4f73ade36d6efa02be
-    fa_ok: UNVERIFIED
+    fa_ok: auto            # ran clean with -fa auto (§D.5); batch decode 57.0 tok/s
     notes: >
       §I.2/B.5 do not pin a specific doc-VLM, only a compact vision-capable
       document model with JSON-schema output. gemma-4-E4B + mmproj qualifies.
