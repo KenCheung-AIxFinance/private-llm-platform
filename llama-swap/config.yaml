@@ -1,0 +1,86 @@
+# llama-swap/config.yaml — canonical serving layer (SOW §D.1, §D.5, §D.6, §C.3)
+# Single OpenAI- AND Anthropic-compatible endpoint fronting upstream llama.cpp
+# llama-server instances on the Vulkan/RADV path. This file IS the fulfilment of
+# the "stable aliases as reviewable configuration" requirement (§D.1).
+#
+# Re-run: /srv/z13/tools/llama-swap/llama-swap -config /srv/z13/llama-swap/config.yaml -listen 127.0.0.1:8080
+# Schema: https://github.com/mostlygeek/llama-swap/blob/main/config.example.yaml (v249)
+
+healthCheckTimeout: 600      # gpt-oss-120B cold-load can take a while
+logLevel: info
+logTimeFormat: "rfc3339"
+logToStdout: "both"          # proxy + upstream (upstream logs = the streaming-log web UI feed, §D.1)
+startPort: 10001             # ${PORT} macro base; auto-incremented per model
+globalTTL: 0                 # resident models stay loaded (overridden per-model below)
+unloadTimeout: 30
+
+# --- reusable §D.5 flag block (sourced conceptually from hosts/z13.env) ---
+macros:
+  "llama":    "/srv/z13/tools/llama.cpp/build/bin/llama-server --port ${PORT}"
+  "z13flags": "--jinja -ub 512 -ctk q8_0 -ctv q8_0 -fa auto -ngl 999 -t 8"
+  "models":   "${env.HOME}/.lmstudio/models/lmstudio-community"
+
+models:
+  # ---- resident utility model (§I.2 utility-fast) ----
+  utility-fast:
+    name: "Gemma 4 26B-A4B QAT Q4 (utility-fast)"
+    cmd: |
+      ${llama} ${z13flags} -m ${models}/gemma-4-26B-A4B-it-QAT-GGUF/gemma-4-26B-A4B-it-QAT-Q4_0.gguf
+    ttl: 0                    # resident (always loaded)
+    concurrencyLimit: 4
+
+  # ---- resident compact document VLM (§I.2 doc-vision) ----
+  doc-vision:
+    name: "Gemma 4 E4B Q4_K_M (doc-vision VLM)"
+    cmd: |
+      ${llama} ${z13flags} -m ${models}/gemma-4-E4B-it-GGUF/gemma-4-E4B-it-Q4_K_M.gguf
+      --mmproj ${models}/gemma-4-E4B-it-GGUF/mmproj-gemma-4-E4B-it-BF16.gguf
+    ttl: 0                    # resident
+    concurrencyLimit: 2
+
+  # ---- resident embedder (§D.6 utility-embed, bge-m3 class) ----
+  utility-embed:
+    name: "bge-m3 Q8_0 (utility-embed)"
+    cmd: |
+      ${llama} ${z13flags} -m ${models}/bge-m3-GGUF/bge-m3-Q8_0.gguf --embedding
+    ttl: 0                    # resident; tiny (~0.6 GB)
+    concurrencyLimit: 4
+
+  # ---- swap-in large reasoning model (§I.2 reasoning-max) ----
+  reasoning-max:
+    name: "gpt-oss-120B MXFP4 (reasoning-max)"
+    cmd: |
+      ${llama} ${z13flags} -m ${models}/gpt-oss-120b-GGUF/gpt-oss-120b-MXFP4-00001-of-00002.gguf
+    ttl: 900                  # unload after 15 min idle (59 GB VRAM freed when not in use)
+    concurrencyLimit: 1       # memory-bandwidth-bound; one sustained request at a time (§I.1)
+    unloadTimeout: 60
+
+# ---- §C.3 cloud aliases: configured but KEYLESS until go-live (§0.4, §E.11).
+#      Owner adds per-provider *_API_KEY at go-live. Until then this single
+#      stub model serves all five cloud alias IDs and returns a clean 401
+#      "key missing" on any inference call (see scripts/cloud-stub.py). ----
+  cloud-disabled:
+    name: "cloud aliases (keyless placeholder until go-live)"
+    cmd: |
+      /usr/bin/python3 /srv/z13/scripts/cloud-stub.py ${PORT}
+    ttl: 0
+    aliases:
+      - cloud-kimi-k3
+      - cloud-fable-5
+      - cloud-deepseek-v4-pro
+      - cloud-qwen
+      - cloud-gemini
+
+# ---- §D.1 model groups: keep the three utilities resident together while
+#      reasoning-max swaps in/out. VRAM budget: 13.5 + 5 + 0.6 ≈ 19 GB resident,
+#      +59 GB when reasoning-max is loaded = ~78 GB of 96 (headroom). ----
+groups:
+  utilities:
+    swap: false               # members stay resident simultaneously
+    members:
+      - utility-fast
+      - doc-vision
+      - utility-embed
+
+# include cloud alias IDs in /v1/models so clients can discover them
+includeAliasesInList: true

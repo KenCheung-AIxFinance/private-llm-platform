@@ -1,0 +1,21 @@
+[Unit]
+Description=llama-swap — canonical serving layer (SOW §D.1/§J.1)
+After=docker.service network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=norbert
+Group=norbert
+# Hermes + open-webui reach llama-swap on 127.0.0.1:8080; bind loopback only (§E.3).
+WorkingDirectory=/srv/z13
+ExecStart=/srv/z13/tools/llama-swap/llama-swap -config /srv/z13/llama-swap/config.yaml -listen 127.0.0.1:8080
+Restart=on-failure
+RestartSec=5
+# hardening
+NoNewPrivileges=true
+ProtectSystem=full
+ReadWritePaths=/srv/z13 /tmp
+
+[Install]
+WantedBy=multi-user.target

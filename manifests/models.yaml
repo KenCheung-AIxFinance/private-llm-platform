@@ -70,18 +70,18 @@ aliases:
       §I.2/B.5 do not pin a specific doc-VLM, only a compact vision-capable
       document model with JSON-schema output. gemma-4-E4B + mmproj qualifies.
 
-  # --- utility-embed (§D.6: bge-m3 class) — MISSING ---
+  # --- utility-embed (§D.6: bge-m3 class) — PRESENT (fetched 2026-08-13) ---
   utility-embed:
     model: bge-m3
-    quant: F16              # ~1.2 GB (Q8_0 ~0.6 GB acceptable)
-    footprint_gb: 1.2
-    status: missing
-    source: TODO            # community GGUF of BAAI/bge-m3
+    quant: Q8_0
+    footprint_gb: 0.6
+    status: present
+    source: ggml-org/bge-m3-Q8_0-GGUF
     files:
-      - name: bge-m3.gguf
-        url: TODO_VERIFY
-        sha256: PENDING
-    notes: nomic-embed-text-v1.5 is present locally but is NOT bge-m3 class.
+      - name: bge-m3-Q8_0.gguf
+        url: https://huggingface.co/ggml-org/bge-m3-Q8_0-GGUF/resolve/main/bge-m3-q8_0.gguf
+        sha256: aa473d51f451a22f0fcf39ba3330c14bed38a385712b1113440f69df4047a173
+    notes: official ggml.org conversion of BAAI/bge-m3; dense+sparse+multi-vector, 100+ langs, 8192 ctx.
 
   # --- eval-only (not a SOW alias; kept for the Owner's eval harness §B.8) ---
   eval/qwen3.6-35b-a3b:
