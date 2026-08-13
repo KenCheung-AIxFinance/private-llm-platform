@@ -1,0 +1,25 @@
+[Unit]
+Description=Hermes Agent gateway/daemon (SOW §E / §J.1)
+After=network-online.target llama-swap.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=norbert
+Group=docker
+Environment="HERMES_HOME=/srv/z13/hermes"
+Environment="PATH=/srv/z13/hermes/bin:/home/norbert/.local/bin:/usr/local/bin:/usr/bin:/bin"
+WorkingDirectory=/srv/z13
+# hermes gateway run = foreground messaging gateway (Telegram/Discord/etc.); requires llama-swap up.
+# Set ExecStart to the appropriate mode: 'hermes gateway run' for messaging, or a cron-only setup.
+# For M2 Round 1 gateways are OFF (§E.6); this unit is a stub for future gateway/cron activation.
+ExecStart=/usr/bin/true
+Restart=on-failure
+RestartSec=10
+# hardening
+NoNewPrivileges=true
+ProtectSystem=full
+ReadWritePaths=/srv/z13
+
+[Install]
+WantedBy=multi-user.target
