@@ -1,0 +1,35 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Financial Document",
+  "type": "object",
+  "required": ["doc_type", "doc_number", "date", "total_amount"],
+  "properties": {
+    "doc_type": {
+      "type": "string",
+      "enum": ["invoice", "statement", "receipt"],
+      "description": "Type of financial document"
+    },
+    "doc_number": {
+      "type": "string",
+      "description": "Document identifier (invoice number, receipt number, account number)"
+    },
+    "date": {
+      "type": "string",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+      "description": "Document date in YYYY-MM-DD format"
+    },
+    "vendor_or_entity": {
+      "type": "string",
+      "description": "Vendor, store, or entity name"
+    },
+    "total_amount": {
+      "type": "number",
+      "description": "Total amount (positive for income/deposits, can be negative for expenses)"
+    },
+    "currency": {
+      "type": "string",
+      "default": "USD",
+      "description": "Currency code"
+    }
+  }
+}

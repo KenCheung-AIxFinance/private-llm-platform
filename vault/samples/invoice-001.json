@@ -1,0 +1,8 @@
+{
+  "doc_type": "invoice",
+  "doc_number": "INV-2026-001",
+  "date": "2026-08-01",
+  "vendor_or_entity": "Acme Corporation",
+  "total_amount": 9439.5,
+  "currency": "USD"
+}

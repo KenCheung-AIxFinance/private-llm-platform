@@ -1,0 +1,19 @@
+BANK STATEMENT
+
+Account Number: ****-****-****-1234
+Statement Period: 2026-07-01 to 2026-07-31
+Account Holder: John Smith
+
+Opening Balance: $12,450.00
+
+Transactions:
+2026-07-05  Deposit - Salary         +$6,500.00
+2026-07-10  ATM Withdrawal           -$200.00
+2026-07-15  Grocery Store            -$145.30
+2026-07-20  Electric Bill            -$89.50
+2026-07-25  Restaurant               -$67.20
+
+Closing Balance: $18,448.00
+
+Total Deposits: $6,500.00
+Total Withdrawals: $502.00

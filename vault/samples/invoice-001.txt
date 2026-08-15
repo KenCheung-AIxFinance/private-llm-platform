@@ -1,0 +1,21 @@
+INVOICE
+
+Invoice Number: INV-2026-001
+Date: 2026-08-01
+Due Date: 2026-08-31
+
+Bill To:
+Acme Corporation
+123 Business St
+San Francisco, CA 94105
+
+Items:
+- Consulting Services (Aug 2026): $5,000.00
+- Software License (Annual): $2,500.00
+- Support & Maintenance: $1,200.00
+
+Subtotal: $8,700.00
+Tax (8.5%): $739.50
+Total: $9,439.50
+
+Payment Terms: Net 30

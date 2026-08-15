@@ -1,0 +1,18 @@
+SALES RECEIPT
+
+Store: TechMart Electronics
+Location: 456 Market St, Austin, TX 78701
+Receipt #: RCP-2026-08-14-0042
+Date: 2026-08-14 15:30
+
+Items Purchased:
+1. Wireless Mouse - Model X200      $29.99
+2. USB-C Cable (2m)                  $12.99
+3. Screen Protector                   $8.99
+
+Subtotal:     $51.97
+Tax (6.25%):   $3.25
+Total:        $55.22
+
+Payment Method: Credit Card (****1234)
+Thank you for shopping at TechMart!
