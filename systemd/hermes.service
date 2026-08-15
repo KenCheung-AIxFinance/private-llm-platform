@@ -8,6 +8,7 @@ Type=simple
 User=norbert
 Group=docker
 Environment="HERMES_HOME=/srv/z13/hermes"
+Environment="TERMINAL_CWD=/srv/z13"
 Environment="PATH=/srv/z13/hermes/bin:/home/norbert/.local/bin:/usr/local/bin:/usr/bin:/bin"
 WorkingDirectory=/srv/z13
 # hermes gateway run = foreground messaging gateway (Telegram/Discord/etc.); requires llama-swap up.

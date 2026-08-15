@@ -34,7 +34,16 @@ No API key (llama-swap is keyless). Cloud aliases (`cloud-kimi-k3`, etc.) return
 
 **Config:** `terminal.backend=docker`, `terminal.cwd=/srv/z13`, `docker_mount_cwd_to_workspace=true`.
 
-**Known issue (v0.20.0):** `docker_mount_cwd_to_workspace` does not actually mount the host cwd into the container's `/workspace`, despite being enabled. Containers see empty `/workspace`. Vault access (§F.3) requires **temporary workaround: `terminal.backend=local`** for file I/O tasks until Hermes updates or a fix is found.
+**Mount requirement:** Hermes reads `host_cwd` from the **`TERMINAL_CWD` environment variable**, not from the `terminal.cwd` YAML value. To enable vault access in Docker sandbox:
+
+```bash
+export TERMINAL_CWD=/srv/z13
+sg docker -c 'hermes --accept-hooks -z "Read /workspace/vault/test-fact.md"'
+```
+
+Without `TERMINAL_CWD`, the container's `/workspace` is empty and vault file I/O fails.
+
+**Known issue (v0.20.0, RESOLVED):** Earlier testing revealed `docker_mount_cwd_to_workspace` was ineffective because `TERMINAL_CWD` was not set. The fix is to set the environment variable before invoking Hermes (see Operate section below).
 
 When invoking Hermes, use `sg docker -c 'hermes ...'` so it inherits the docker group for backend=docker.
 
@@ -76,6 +85,8 @@ Owner-triggered (not auto):
 
 ```
 cd /srv/z13
+export HERMES_HOME=/srv/z13/hermes
+export TERMINAL_CWD=/srv/z13           # REQUIRED for Docker sandbox vault access (§E.2)
 sg docker -c 'hermes'                   # interactive CLI
 sg docker -c 'hermes -z "one-shot"'     # batch task
 hermes cron list                         # scheduled jobs (Owner-approved only, §E.8)
@@ -84,6 +95,8 @@ hermes portal status                     # Nous Portal (not logged in, §E.4)
 hermes tools list                        # enabled tools
 hermes config get model.provider         # verify llama-swap endpoint
 ```
+
+**重要**：`TERMINAL_CWD=/srv/z13` 环境变量对于 Docker 沙箱挂载是**必需的**。Hermes 的 `docker_mount_cwd_to_workspace` 配置从 `TERMINAL_CWD` 环境变量读取主机目录，而不是从 `terminal.cwd` YAML 值读取。没有此环境变量，容器的 `/workspace` 将为空，vault 文件 I/O 将失败。
 
 ## M2 Round 1 verified 2026-08-14
 
