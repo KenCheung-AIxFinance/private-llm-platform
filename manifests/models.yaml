@@ -95,3 +95,56 @@ aliases:
         sha256: 4ac6a06bce551257267f49ad2226f8671a22519ccc1a4dde9d5b433d1f2a410d
       - name: mmproj-Qwen3.6-35B-A3B-BF16.gguf
         sha256: e5c205cec2fd28f66c3895e4040021ab994b860323c3db8531640305ff49b322
+
+  # --- §C.5 MoE 候选者：Owner 评估 (M2 要求：2 个 > 100B MoE) ---
+
+  # 候选者 #1: Mixtral 8x22B (141B MoE, 推荐)
+  mixtral-8x22b:
+    model: Mixtral-8x22B-Instruct-v0.1
+    quant: Q4_K_M
+    footprint_gb: 74.0
+    status: candidate            # §C.5 Owner 评估；未下载
+    source: mistralai/Mixtral-8x22B-Instruct-v0.1
+    architecture: MoE
+    total_params_b: 141
+    active_params_b: 39
+    experts: 8
+    files:
+      - name: mixtral-8x22b-instruct-v0.1.Q4_K_M.gguf
+        url: https://huggingface.co/mistralai/Mixtral-8x22B-Instruct-v0.1-GGUF/resolve/main/mixtral-8x22b-instruct-v0.1.Q4_K_M.gguf
+        sha256: TODO_VERIFY         # 下载后验证
+    fa_ok: auto
+    notes: >
+      §C.5 候选者 #1 (M2): 141B MoE (8x22B 专家), 39B 活跃参数。
+      Q4_K_M 量化 ~74 GB (在 96GB VRAM 预算内)。已确认 GGUF 可用性。
+      Dense 30-70B 排除在外；这是真正的 MoE。推荐用于 Owner 评估。
+
+  # 候选者 #2: Grok-1 (314B MoE, 需要激进量化)
+  grok-1:
+    model: grok-1
+    quant: Q2_K
+    footprint_gb: 92.0
+    status: candidate            # §C.5 Owner 评估；未下载
+    source: xai-org/grok-1
+    architecture: MoE
+    total_params_b: 314
+    active_params_b: 86
+    experts: 8
+    files:
+      - name: grok-1-Q2_K.gguf   # 或分片 gguf
+        url: TODO_VERIFY           # 验证 HF 上的 GGUF 可用性
+        sha256: TODO_VERIFY
+    fa_ok: auto
+    notes: >
+      §C.5 候选者 #2 (M2): 314B MoE (8 专家), 86B 活跃参数。
+      需要 Q2_K 量化以适应 96GB (~92 GB, 勉强可行)。Q4_K_M 会是 ~165 GB (超出预算)。
+      备选选项：DBRX (Databricks, 132B MoE) 如果 Grok-1 GGUF 不可用。
+      Owner 评估质量权衡（Q2_K 可能会降级）vs 参数数量 (314B > 141B)。
+
+  # Owner 指定的 "Qwen 3.8 27B" — 需要澄清
+  # 注意：没有标准的 "Qwen 3.8 27B" 模型。可能的解释：
+  #   - Qwen2.5-MoE-A22B (57B MoE, 22B 活跃) — 但 57B < 100B (不符合 §C.5)
+  #   - Qwen2.5 27B (密集型) — 排除在外 (§C.5 要求 MoE)
+  #   - 错误记忆或未来模型
+  # 建议：Owner 澄清意图；如果是 Qwen2.5-MoE，则低于 100B 阈值。
+
