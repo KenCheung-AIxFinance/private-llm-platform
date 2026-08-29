@@ -15,19 +15,28 @@
 
 ### 启动所有服务
 
+> 以下步骤在 2026-08-28 机器重启后**实测通过**。若已设开机自启（见下），llama-swap 和 Docker Desktop 会自动起来，通常只需第 3 步拉 Open WebUI。
+
 ```bash
-# 1. 启动 llama-swap
-sudo systemctl start llama-swap
-systemctl status llama-swap  # 验证运行中
+# 1. 启动 llama-swap（enable --now 同时设为开机自启，一次即可）
+sudo systemctl enable --now llama-swap
+#    等待 resident 模型加载就绪（首次冷载需 10-30s）
+for i in $(seq 1 20); do curl -sf -m2 http://127.0.0.1:8080/v1/models >/dev/null && { echo ready; break; }; sleep 5; done
 
-# 2. 启动 Open WebUI
-cd /srv/z13/compose
-docker compose up -d
+# 2. 启动 Docker Desktop（enable 设开机自启；首次启动 30-60s）
+systemctl --user enable --now docker-desktop
+for i in $(seq 1 24); do docker ps >/dev/null 2>&1 && { echo "docker ready"; break; }; sleep 5; done
 
-# 3. 验证服务
-curl -s http://127.0.0.1:8080/v1/models | jq '.data[].id'  # llama-swap
-curl -s http://127.0.0.1:3000/health  # Open WebUI
+# 3. 启动 Open WebUI（首次会下载 embedding 模型，1-2 分钟）
+cd /srv/z13/compose && docker compose up -d
+
+# 4. 验证服务
+echo "llama-swap: $(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8080/v1/models)"  # 期望 200
+echo "OpenWebUI:  $(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:3000/)"            # 期望 200
+curl -s http://127.0.0.1:8080/v1/models | jq -r '.data[].id' | sort                            # 期望 10 个别名
 ```
+
+> **重启后为何服务全停？** 若之前没执行过 `enable`，`llama-swap.service` 是 disabled、Docker Desktop 也不会自启，重启后全部 inactive。上面的 `enable --now` 一次执行后即固化开机自启，以后重启会自动恢复。
 
 ### 停止所有服务
 
@@ -35,6 +44,14 @@ curl -s http://127.0.0.1:3000/health  # Open WebUI
 sudo systemctl stop llama-swap
 cd /srv/z13/compose && docker compose down
 ```
+
+### 重启后的三大常见故障（实测）
+
+| 症状 | 根因 | 修复 |
+|---|---|---|
+| Hermes 报 `API call failed after 3 retries: Connection error` | llama-swap 没跑（provider 连不上 8080）| `sudo systemctl start llama-swap`；`curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8080/v1/models` 应返回 200 |
+| `docker ps` 报 `Cannot connect to the Docker daemon` | Docker Desktop 没起 | `systemctl --user start docker-desktop`，等 30-60s |
+| 重启后服务全没了 | 没设开机自启 | `sudo systemctl enable llama-swap` + `systemctl --user enable docker-desktop` |
 
 ---
 
@@ -157,11 +174,13 @@ curl -s http://127.0.0.1:8080/v1/models | jq '.data[] | {id, object}'
 
 ### 交换别名背后的模型
 
-编辑 `/srv/z13/llama-swap/config.yaml`，修改别名的 `model_path`：
+编辑 `/srv/z13/llama-swap/config.yaml`，修改别名 `cmd:` 里 `-m` 指向的模型文件（模型都在 `~/.lmstudio/models/lmstudio-community/`，由 `${models}` 宏指向）：
 
 ```yaml
 utility-fast:
-  model_path: /srv/z13/weights/new-model.gguf  # 修改这里
+  cmd: |
+    ${llama} ${z13flags} -m ${models}/新模型目录/新模型.gguf   # 改这里的 -m 路径
+  ttl: 0
 ```
 
 重启服务：
@@ -170,24 +189,25 @@ utility-fast:
 sudo systemctl restart llama-swap
 ```
 
-**重要**：客户端代码无需更改（这就是别名的意义）。
+**重要**：客户端代码无需更改（`"model":"utility-fast"` 不变）——这就是别名的意义（已通过别名交换测试验证，见 `vault/audits/alias-swap-test-*.md`）。
 
 ### 添加新别名
 
-在 `config.yaml` 的 `aliases:` 部分添加：
+先把权重放到 `~/.lmstudio/models/lmstudio-community/`（用 LM Studio 或 `huggingface-cli download`），然后在 `config.yaml` 的 `models:` 部分加一条：
 
 ```yaml
 my-new-alias:
-  model_path: /srv/z13/weights/my-model.gguf
-  max_tokens: 4096
-  temperature: 0.7
+  name: "My New Model"
+  cmd: |
+    ${llama} ${z13flags} -m ${models}/my-model-GGUF/my-model.gguf
+  ttl: 0
 ```
 
-重启服务并验证：
+重启并验证：
 
 ```bash
 sudo systemctl restart llama-swap
-curl -s http://127.0.0.1:8080/v1/models | jq '.data[].id' | grep my-new-alias
+curl -s http://127.0.0.1:8080/v1/models | jq -r '.data[].id' | grep my-new-alias
 ```
 
 ---
@@ -322,7 +342,7 @@ docker compose logs -f open-webui
 ### 常见问题
 
 **Q: llama-swap 返回 "Failed to load model"**
-- 检查权重文件是否存在：`ls -lh /srv/z13/weights/`
+- 检查权重文件是否存在：`ls -lh ~/.lmstudio/models/lmstudio-community/*/*.gguf`
 - 检查路径拼写：`grep model_path /srv/z13/llama-swap/config.yaml`
 
 **Q: Hermes 在 Docker 中看不到 vault**
@@ -368,8 +388,8 @@ docker compose logs -f open-webui
 
 ### 添加新模型权重
 
-1. 下载到 `/srv/z13/weights/new-model.gguf`
-2. 更新 `manifests/models.yaml`（添加条目）
+1. 下载到 `~/.lmstudio/models/lmstudio-community/new-model-GGUF/new-model.gguf`（LM Studio 或 huggingface-cli）
+2. 更新 `manifests/models.yaml`（添加条目 + SHA256）
 3. 在 `llama-swap/config.yaml` 添加别名或替换现有别名
 4. 重启：`sudo systemctl restart llama-swap`
 5. 提交：`git add manifests/ llama-swap/ && git commit -m "feat: add new-model alias"`

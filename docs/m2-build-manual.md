@@ -1,11 +1,13 @@
 # M2 Complete Build Manual — 从零到完整部署
 
-> ⚠️ **注意**：本文档的部分下载 URL、模型路径（`/srv/z13/weights/`）、Hermes 安装方式为
-> **重建时的推测写法，未经实测**。实际系统的真实路径和激活步骤请以
-> **[`m2-activation-verified.md`](m2-activation-verified.md)** 为准（每条命令均已实测通过）。
-
-
 本文档记录 M2（serving layer + Hermes Agent）从零开始的完整搭建步骤，包括 Round 1（基础架构）和 Round 2（验收测试），目标是让你在没有 AI 助手的情况下也能完全重建系统。
+
+> **本机实测校正（2026-08-28）**：以下为已搭建系统的真实事实，本文档的搭建命令据此校正——
+> - 模型权重实际在 `~/.lmstudio/models/lmstudio-community/`（**不是** `/srv/z13/weights/`）
+> - llama-swap = **mostlygeek/llama-swap v249**（二进制在 `/srv/z13/tools/llama-swap/`）
+> - 推理引擎 llama-server 从源码编译（Vulkan）在 `/srv/z13/tools/llama.cpp/build/bin/`
+> - Hermes 经官方 installer 装为 uv venv，入口 `~/.local/bin/hermes`
+> - **日常启动、重启后激活、故障排查见 [`m2-usage-guide.md`](m2-usage-guide.md)**
 
 **预计时间**：6-8 小时（不含权重下载时间）
 
@@ -76,70 +78,83 @@ git commit -m "init: state root structure"
 
 ### 2.1 安装 llama-swap
 
-```bash
-cd /srv/z13/tools
-curl -LO https://github.com/tjbck/llama-swap/releases/download/v249/llama-swap-v249-linux-amd64
-chmod +x llama-swap-v249-linux-amd64
-ln -s llama-swap-v249-linux-amd64 llama-swap
-```
-
-### 2.2 下载模型权重
+llama-swap = **mostlygeek/llama-swap v249**（Go 单文件）。从 GitHub releases 下载 linux amd64：
 
 ```bash
-cd /srv/z13/weights
-
-# doc-vision (Gemma 4 E4B, 9B VLM)
-wget https://huggingface.co/lmstudio-community/gemma-4-E4B-it-GGUF/resolve/main/gemma-4-E4B-it-Q4_K_M.gguf
-wget https://huggingface.co/lmstudio-community/gemma-4-E4B-it-GGUF/resolve/main/mmproj-gemma-4-E4B-it-BF16.gguf
-
-# utility-fast (Gemma 4 26B-A4B)
-wget https://huggingface.co/lmstudio-community/gemma-4-26B-A4B-it-QAT-GGUF/resolve/main/gemma-4-26B-A4B-it-QAT-Q4_0.gguf
-wget https://huggingface.co/lmstudio-community/gemma-4-26B-A4B-it-QAT-GGUF/resolve/main/mmproj-gemma-4-26B-A4B-it-QAT-BF16.gguf
-
-# utility-embed (Nomic Embed v1.5)
-wget https://huggingface.co/nomic-ai/nomic-embed-text-v1.5-GGUF/resolve/main/nomic-embed-text-v1.5.Q8_0.gguf
-
-# reasoning-max (GPT-OSS-120B, 59 GB)
-wget https://huggingface.co/lmstudio-community/gpt-oss-120b-GGUF/resolve/main/gpt-oss-120b-MXFP4-shard1.gguf
-wget https://huggingface.co/lmstudio-community/gpt-oss-120b-GGUF/resolve/main/gpt-oss-120b-MXFP4-shard2.gguf
+mkdir -p /srv/z13/tools/llama-swap && cd /srv/z13/tools/llama-swap
+# 从 https://github.com/mostlygeek/llama-swap/releases/tag/v249 下载 llama-swap_249_linux_amd64.tar.gz
+curl -L -o ls.tar.gz \
+  "https://github.com/mostlygeek/llama-swap/releases/download/v249/llama-swap_249_linux_amd64.tar.gz"
+tar xzf ls.tar.gz && rm ls.tar.gz
+chmod +x llama-swap
+./llama-swap --version   # 期望：version: v249
 ```
 
-### 2.3 创建配置（简化版）
+> 网络受限时用镜像前缀 `https://ghfast.top/https://github.com/...`。
 
-创建 `/srv/z13/llama-swap/config.yaml`：
+### 2.2 编译推理引擎 llama-server（Vulkan/RADV）
+
+llama-swap 只是代理，真正跑推理的是**从源码编译的 upstream llama.cpp `llama-server`**（Vulkan 后端，gfx1151）。这已在 M1 完成，位于 `/srv/z13/tools/llama.cpp/build/bin/llama-server`。若需重建见 `runbook/build.md`（M1 构建记录：cmake + `-DGGML_VULKAN=ON`）。
+
+### 2.3 模型权重（已在 LM Studio 目录，无需重复下载）
+
+模型权重实际存放在 **`~/.lmstudio/models/lmstudio-community/`**（通过 LM Studio 下载，llama-swap 配置用 `${models}` 宏指向此处）。当前已就绪：
+
+```bash
+ls -lh ~/.lmstudio/models/lmstudio-community/*/*.gguf
+# gemma-4-E4B-it-GGUF/gemma-4-E4B-it-Q4_K_M.gguf              (doc-vision, 5.0G)
+# gemma-4-E4B-it-GGUF/mmproj-gemma-4-E4B-it-BF16.gguf         (doc-vision vision proj)
+# gemma-4-26B-A4B-it-QAT-GGUF/gemma-4-26B-A4B-it-QAT-Q4_0.gguf(utility-fast, 14G)
+# bge-m3-GGUF/bge-m3-Q8_0.gguf                                (utility-embed, ~0.6G)
+# gpt-oss-120b-GGUF/gpt-oss-120b-MXFP4-00001-of-00002.gguf    (reasoning-max, 38G)
+# gpt-oss-120b-GGUF/gpt-oss-120b-MXFP4-00002-of-00002.gguf    (reasoning-max, 22G)
+```
+
+若在新机器重建，用 `huggingface-cli download` 或 LM Studio 拉取相同模型到同一目录，并核对 `manifests/models.yaml` 中的 SHA256。
+
+### 2.4 llama-swap 配置（真实 schema）
+
+真实配置用 `models:` + `cmd:`（每个别名启动一个 llama-server 进程）+ 宏，**不是** `aliases:`+`model_path:`。完整文件见 `/srv/z13/llama-swap/config.yaml`，结构如下：
 
 ```yaml
-listen: 127.0.0.1:8080
-backend: llama-cpp
-llama_cpp:
-  ngl: 999
-  ctx: 8192
-  fa: auto
-  vulkan: true
+healthCheckTimeout: 600
+startPort: 10001
+macros:
+  "llama":    "/srv/z13/tools/llama.cpp/build/bin/llama-server --port ${PORT}"
+  "z13flags": "--jinja -ub 512 -ctk q8_0 -ctv q8_0 -fa auto -ngl 999 -t 8"
+  "models":   "${env.HOME}/.lmstudio/models/lmstudio-community"
 
-aliases:
-  doc-vision:
-    model_path: /srv/z13/weights/gemma-4-E4B-it-Q4_K_M.gguf
-    mmproj: /srv/z13/weights/mmproj-gemma-4-E4B-it-BF16.gguf
-    
+models:
   utility-fast:
-    model_path: /srv/z13/weights/gemma-4-26B-A4B-it-QAT-Q4_0.gguf
-    mmproj: /srv/z13/weights/mmproj-gemma-4-26B-A4B-it-QAT-BF16.gguf
-    
+    cmd: |
+      ${llama} ${z13flags} -m ${models}/gemma-4-26B-A4B-it-QAT-GGUF/gemma-4-26B-A4B-it-QAT-Q4_0.gguf
+    ttl: 0
+  doc-vision:
+    cmd: |
+      ${llama} ${z13flags} -m ${models}/gemma-4-E4B-it-GGUF/gemma-4-E4B-it-Q4_K_M.gguf
+      --mmproj ${models}/gemma-4-E4B-it-GGUF/mmproj-gemma-4-E4B-it-BF16.gguf
+    ttl: 0
   utility-embed:
-    model_path: /srv/z13/weights/nomic-embed-text-v1.5.Q8_0.gguf
-    embedding: true
-    
+    cmd: |
+      ${llama} ${z13flags} -m ${models}/bge-m3-GGUF/bge-m3-Q8_0.gguf --embedding
+    ttl: 0
   reasoning-max:
-    model_path: /srv/z13/weights/gpt-oss-120b-MXFP4-shard1.gguf
-    
-  cloud-kimi-k3:
-    provider: openai
-    base_url: https://api.moonshot.cn/v1
-    model: moonshot-v1-128k
-    api_key_env: KIMI_API_KEY
-    fallback_message: "cloud alias keyless (SOW §C.3)"
+    cmd: |
+      ${llama} ${z13flags} -m ${models}/gpt-oss-120b-GGUF/gpt-oss-120b-MXFP4-00001-of-00002.gguf
+    ttl: 900
+  # 云别名：keyless stub，返回 401（见 scripts/cloud-stub.py）
+  cloud-disabled:
+    cmd: /usr/bin/python3 /srv/z13/scripts/cloud-stub.py ${PORT}
+    aliases: [cloud-kimi-k3, cloud-fable-5, cloud-deepseek-v4-pro, cloud-qwen, cloud-gemini]
+
+groups:
+  utilities:
+    swap: false
+    members: [utility-fast, doc-vision, utility-embed]
+includeAliasesInList: true
 ```
+
+> 5 个云别名由一个 `cloud-stub.py`（stdlib HTTP，返回 401 key_missing）承接，直到 go-live 时 Owner 加密钥。
 
 ### 2.4 启动服务
 
@@ -201,33 +216,42 @@ docker compose up -d
 
 ## 第四阶段：Hermes Agent
 
-### 4.1 安装 Hermes
+### 4.1 安装 Hermes（官方 installer → uv venv）
+
+Hermes 用**官方 installer** 安装（不是 GitHub release tar）。它会用 uv 建 Python venv，并在 `~/.local/bin/hermes` 放一个入口 shim。用 `HERMES_HOME` 把状态目录固定到状态根（§E.5）：
 
 ```bash
-cd /srv/z13
-curl -LO https://github.com/NousResearch/hermes-agent/releases/download/v0.20.0/hermes-v0.20.0-linux-x64.tar.gz
-tar xzf hermes-v0.20.0-linux-x64.tar.gz
-mv hermes-v0.20.0 hermes
-
 export HERMES_HOME=/srv/z13/hermes
-export PATH="/srv/z13/hermes/bin:$PATH"
-hermes --version
+curl -fsSL https://hermes.nousresearch.com/install.sh | bash
+# 或参考 NousResearch/hermes-agent README 的安装命令
+
+# 验证（入口在 PATH，指向 venv）
+which hermes                    # /home/norbert/.local/bin/hermes
+hermes --version                # Hermes Agent v0.20.0
 ```
 
-### 4.2 配置 Hermes
+真实布局：
+- 入口 shim：`~/.local/bin/hermes` → `exec /srv/z13/hermes/hermes-agent/venv/bin/python /srv/z13/hermes/hermes-agent/hermes "$@"`
+- 代码：`/srv/z13/hermes/hermes-agent/`
+- 状态（HERMES_HOME）：`/srv/z13/hermes/`（config.yaml、audit.jsonl、sessions/、hooks/ 等）
 
-编辑 `/srv/z13/hermes/config.yaml`：
+### 4.2 配置 Hermes（真实 config key）
 
-```yaml
-provider:
-  type: openai
-  base_url: http://127.0.0.1:8080/v1
-  model: doc-vision
-  
-terminal:
-  backend: docker
-  cwd: /srv/z13
-  docker_mount_cwd_to_workspace: true
+用 `hermes config set` 设置（不要手写臆想的 schema）。真实 key 是 `model.*` 和 `terminal.*`：
+
+```bash
+export HERMES_HOME=/srv/z13/hermes
+hermes config set model.provider custom
+hermes config set model.base_url http://127.0.0.1:8080/v1
+hermes config set model.default doc-vision
+hermes config set terminal.backend docker
+hermes config set terminal.cwd /srv/z13
+hermes config set terminal.docker_mount_cwd_to_workspace true
+
+# 验证
+hermes config get model.provider     # custom
+hermes config get model.base_url     # http://127.0.0.1:8080/v1
+hermes config get terminal.backend   # docker
 ```
 
 ### 4.3 Docker 沙箱修复

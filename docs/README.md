@@ -49,10 +49,11 @@
 **我需要...**
 
 - 从零重建系统 → [Build Manual](m2-build-manual.md)
+- **机器重启后重新激活服务** → [Usage Guide](m2-usage-guide.md) "快速启动"（含开机自启 + 三大常见故障）
 - 日常使用已有系统 → [Usage Guide](m2-usage-guide.md)
 - 验证系统是否满足 SOW → [Acceptance Tests](m2-acceptance-tests.md)
 - 了解 M2 架构 → [Build Manual](m2-build-manual.md) §1-4
-- 排查问题 → [Usage Guide](m2-usage-guide.md) "日志和故障排除"
+- 排查问题 → [Usage Guide](m2-usage-guide.md) "重启后的三大常见故障" / "日志和故障排除"
 - 添加新模型 → [Usage Guide](m2-usage-guide.md) "模型别名管理"
 - 运行基准测试 → [Usage Guide](m2-usage-guide.md) "运行评估测试"
 
@@ -60,10 +61,11 @@
 
 ## 文档版本
 
-- 创建日期：2026-08-26
+- 创建日期：2026-08-26；路径/命令实测校正：2026-08-28
 - M2 状态：COMPLETE (10/10 SOW lines)
-- 系统版本：llama-swap v249, Hermes v0.20.0
+- 系统版本：llama-swap v249 (mostlygeek), Hermes v0.20.0 (uv venv)
 - 覆盖范围：M2 Round 1 + Round 2
+- **真实路径基准**：模型在 `~/.lmstudio/models/lmstudio-community/`；llama-server 在 `/srv/z13/tools/llama.cpp/build/bin/`；Hermes 入口 `~/.local/bin/hermes`
 
 ## 相关文档
 
