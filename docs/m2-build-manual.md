@@ -1,5 +1,10 @@
 # M2 Complete Build Manual — 从零到完整部署
 
+> ⚠️ **注意**：本文档的部分下载 URL、模型路径（`/srv/z13/weights/`）、Hermes 安装方式为
+> **重建时的推测写法，未经实测**。实际系统的真实路径和激活步骤请以
+> **[`m2-activation-verified.md`](m2-activation-verified.md)** 为准（每条命令均已实测通过）。
+
+
 本文档记录 M2（serving layer + Hermes Agent）从零开始的完整搭建步骤，包括 Round 1（基础架构）和 Round 2（验收测试），目标是让你在没有 AI 助手的情况下也能完全重建系统。
 
 **预计时间**：6-8 小时（不含权重下载时间）
