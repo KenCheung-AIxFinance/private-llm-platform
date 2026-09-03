@@ -55,56 +55,21 @@ models:
     concurrencyLimit: 1       # memory-bandwidth-bound; one sustained request at a time (§I.1)
     unloadTimeout: 60
 
-# ---- Cloud aliases: real provider configurations (config-driven, single source of truth)
-#      scripts/cloud-proxy.py reads this config for ALL cloud settings. To add new cloud:
-#      1. Add entry here with provider/base_url/model/api_key_env
-#      2. export {api_key_env}='sk-...' before starting llama-swap
-#      3. sudo systemctl restart llama-swap
-#      cloud-proxy.py auto-discovers all models with 'provider' field. ----
-  cloud-kimi-k3:
-    name: "Moonshot Kimi K3"
-    provider: openai
-    base_url: https://api.moonshot.cn/v1/chat/completions
-    model: kimi-k3
-    api_key_env: KIMI_API_KEY
-    cmd: /usr/bin/python3 /srv/z13/scripts/cloud-proxy.py ${PORT}
+# ---- §C.3 cloud aliases: configured but KEYLESS until go-live (§0.4, §E.11).
+#      Owner adds per-provider *_API_KEY at go-live. Until then this single
+#      stub model serves all five cloud alias IDs and returns a clean 401
+#      "key missing" on any inference call (see scripts/cloud-stub.py). ----
+  cloud-disabled:
+    name: "cloud aliases (keyless placeholder until go-live)"
+    cmd: |
+      /usr/bin/python3 /srv/z13/scripts/cloud-stub.py ${PORT}
     ttl: 0
-
-  cloud-deepseek-v4-pro:
-    name: "DeepSeek V4 Pro"
-    provider: openai
-    base_url: https://api.deepseek.com/v1/chat/completions
-    model: deepseek-chat
-    api_key_env: DEEPSEEK_API_KEY
-    cmd: /usr/bin/python3 /srv/z13/scripts/cloud-proxy.py ${PORT}
-    ttl: 0
-
-  cloud-gemini:
-    name: "Google Gemini Pro"
-    provider: google
-    base_url: https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent
-    model: gemini-pro
-    api_key_env: GEMINI_API_KEY
-    cmd: /usr/bin/python3 /srv/z13/scripts/cloud-proxy.py ${PORT}
-    ttl: 0
-
-  cloud-qwen:
-    name: "Alibaba Qwen Max"
-    provider: dashscope
-    base_url: https://dashscope.aliyuncs.com/api/v1/services/aigc/text-generation/generation
-    model: qwen-max
-    api_key_env: QWEN_API_KEY
-    cmd: /usr/bin/python3 /srv/z13/scripts/cloud-proxy.py ${PORT}
-    ttl: 0
-
-  cloud-fable-5:
-    name: "Anthropic Claude Fable 5"
-    provider: anthropic
-    base_url: https://api.anthropic.com/v1/messages
-    model: claude-fable-5-20261022
-    api_key_env: ANTHROPIC_API_KEY
-    cmd: /usr/bin/python3 /srv/z13/scripts/cloud-proxy.py ${PORT}
-    ttl: 0
+    aliases:
+      - cloud-kimi-k3
+      - cloud-fable-5
+      - cloud-deepseek-v4-pro
+      - cloud-qwen
+      - cloud-gemini
 
 # ---- §D.1 model groups: keep the three utilities resident together while
 #      reasoning-max swaps in/out. VRAM budget: 13.5 + 5 + 0.6 ≈ 19 GB resident,
