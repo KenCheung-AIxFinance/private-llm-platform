@@ -142,10 +142,35 @@ models:
     cmd: |
       ${llama} ${z13flags} -m ${models}/gpt-oss-120b-GGUF/gpt-oss-120b-MXFP4-00001-of-00002.gguf
     ttl: 900
-  # 云别名：keyless stub，返回 401（见 scripts/cloud-stub.py）
-  cloud-disabled:
-    cmd: /usr/bin/python3 /srv/z13/scripts/cloud-stub.py ${PORT}
-    aliases: [cloud-kimi-k3, cloud-fable-5, cloud-deepseek-v4-pro, cloud-qwen, cloud-gemini]
+  # 云别名：通用云端路由（配置驱动，见 scripts/cloud-proxy.py）
+  # 支持任意 OpenAI 兼容端点（OpenAI/Kimi/DeepSeek/Azure/自定义）
+  cloud-kimi-k3:
+    name: "Moonshot Kimi K3"
+    provider: openai
+    base_url: https://api.moonshot.cn/v1/chat/completions
+    model: kimi-k3
+    api_key_env: KIMI_API_KEY
+    cmd: /usr/bin/python3 /srv/z13/scripts/cloud-proxy.py ${PORT}
+    ttl: 0
+  
+  cloud-gpt-4o:
+    name: "OpenAI GPT-4o"
+    provider: openai
+    base_url: https://api.openai.com/v1/chat/completions
+    model: gpt-4o
+    api_key_env: OPENAI_API_KEY
+    cmd: /usr/bin/python3 /srv/z13/scripts/cloud-proxy.py ${PORT}
+    ttl: 0
+  
+  cloud-azure-gpt4:
+    name: "Azure OpenAI GPT-4"
+    provider: azure
+    base_url: https://your-resource.openai.azure.com
+    deployment_name: gpt-4-deployment
+    api_version: 2024-02-15-preview
+    api_key_env: AZURE_OPENAI_API_KEY
+    cmd: /usr/bin/python3 /srv/z13/scripts/cloud-proxy.py ${PORT}
+    ttl: 0
 
 groups:
   utilities:
@@ -154,7 +179,7 @@ groups:
 includeAliasesInList: true
 ```
 
-> 5 个云别名由一个 `cloud-stub.py`（stdlib HTTP，返回 401 key_missing）承接，直到 go-live 时 Owner 加密钥。
+> **云端路由**：`scripts/cloud-proxy.py` 是通用配置驱动代理，自动读取 config.yaml 中所有带 `provider` 字段的模型。支持任意 OpenAI 兼容端点（OpenAI/Kimi/DeepSeek/Azure/vLLM/Ollama Cloud 等）。激活时通过 systemd override 注入 API key（见 m2-usage-guide.md "云端模型激活"）。当前已配置 10 个云端模型，Kimi K3 已激活。
 
 ### 2.4 启动服务
 

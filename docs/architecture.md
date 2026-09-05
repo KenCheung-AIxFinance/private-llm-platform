@@ -101,10 +101,11 @@
 - **内存管理**：Vulkan VMA, unified memory pool
 - **选择原因**：gfx1151 上 Vulkan 比 ROCm 稳定（SOW §D.5）
 
-**云端路径**（keyless stub，等待 Owner 激活）：
-- Moonshot/Kimi API：`https://api.moonshot.cn/v1`
-- DeepSeek API：`https://api.deepseek.com/v1`
-- Google Gemini、Fable 5、Qwen：各自端点
+**云端路径**（通用提供商支持，配置驱动）：
+- **cloud-proxy.py**：通用配置驱动代理，自动读取 config.yaml 中所有带 `provider` 字段的模型
+- **支持的提供商**：OpenAI、Moonshot/Kimi、DeepSeek、Azure OpenAI、Anthropic、Google Gemini、Qwen、自定义 OpenAI 兼容端点（vLLM、Ollama Cloud 等）
+- **激活方式**：systemd override 注入 API key（`/etc/systemd/system/llama-swap.service.d/cloud-*.conf`）
+- **当前配置**：10 个云端模型（Kimi K3 已激活，其他等待 API key）
 
 ### Layer 3 — 本地推理引擎
 
@@ -153,10 +154,11 @@
 4. **统一端点**：对外只暴露 `:8080`，客户端无需知道子进程端口
 5. **日志聚合**：llama-server 输出通过 llama-swap 代理到 journalctl
 
-**别名清单**（10 个）：
+**别名清单**（14 个）：
 - **4 个本地别名**：doc-vision (默认 VLM), utility-fast (26B), utility-embed (嵌入), reasoning-max (120B 推理)
-- **5 个云别名**：cloud-kimi-k3, cloud-fable-5, cloud-deepseek-v4-pro, cloud-qwen, cloud-gemini
-- **1 个 stub**：`cloud-disabled` (Python HTTP，返回 401 key_missing，承接 5 个云别名直到 Owner 加密钥)
+- **10 个云别名**：
+  - 已激活：cloud-kimi-k3 (Moonshot Kimi K3)
+  - 待激活：cloud-gpt-4o, cloud-gpt-4o-mini (OpenAI), cloud-deepseek-v4-pro (DeepSeek), cloud-gemini (Google), cloud-qwen (Qwen), cloud-fable-5 (Anthropic), cloud-azure-gpt4 (Azure), cloud-custom-vllm (自定义 vLLM), cloud-ollama-cloud (Ollama Cloud)
 
 **配置 schema**（真实）：
 ```yaml
@@ -166,14 +168,30 @@ macros:
   "models": "${env.HOME}/.lmstudio/models/lmstudio-community"
 
 models:
+  # 本地模型
   doc-vision:
     cmd: |
       ${llama} ${z13flags} -m ${models}/gemma-4-E4B-it-GGUF/gemma-4-E4B-it-Q4_K_M.gguf
       --mmproj ${models}/gemma-4-E4B-it-GGUF/mmproj-gemma-4-E4B-it-BF16.gguf
     ttl: 0  # 常驻
-  cloud-disabled:
-    cmd: /usr/bin/python3 /srv/z13/scripts/cloud-stub.py ${PORT}
-    aliases: [cloud-kimi-k3, cloud-fable-5, ...]  # 5 个云别名共享
+  
+  # 云端模型（配置驱动，cloud-proxy.py 自动发现）
+  cloud-kimi-k3:
+    provider: openai
+    base_url: https://api.moonshot.cn/v1/chat/completions
+    model: kimi-k3
+    api_key_env: KIMI_API_KEY
+    cmd: /usr/bin/python3 /srv/z13/scripts/cloud-proxy.py ${PORT}
+    ttl: 0
+  
+  cloud-azure-gpt4:
+    provider: azure
+    base_url: https://your-resource.openai.azure.com
+    deployment_name: gpt-4-deployment
+    api_version: 2024-02-15-preview
+    api_key_env: AZURE_OPENAI_API_KEY
+    cmd: /usr/bin/python3 /srv/z13/scripts/cloud-proxy.py ${PORT}
+    ttl: 0
 ```
 
 ### Layer 5 — 应用层
@@ -242,22 +260,86 @@ models:
 7. Hermes 收到回答，写入 audit.jsonl，返回用户
 ```
 
-### 场景 C：云别名（keyless stub，期望行为）
+### 场景 C：云别名调用（通用提供商支持）
 
+**keyless 状态**（未注入 API key）：
+```
+1. 客户端请求 {"model": "cloud-gpt-4o", ...}
+2. llama-swap 识别别名 → models.cloud-gpt-4o
+3. 转发到 cloud-proxy.py (port 10005)
+4. cloud-proxy.py 检查 config.yaml → 发现需要 OPENAI_API_KEY
+5. 环境变量中未找到 → 返回：
+   HTTP 401 {"error": {"message": "Cloud alias 'cloud-gpt-4o' requires 
+            OPENAI_API_KEY environment variable...", "code": "key_missing"}}
+6. 客户端收到 401 错误
+```
+
+**已激活状态**（已注入 API key，例如 cloud-kimi-k3）：
 ```
 1. 客户端请求 {"model": "cloud-kimi-k3", ...}
-2. llama-swap 识别别名 cloud-kimi-k3 → models.cloud-disabled
-3. 转发到 http://localhost:10005/v1/chat/completions (cloud-stub.py)
-4. cloud-stub.py 返回：
-   HTTP 401 Unauthorized
-   {"error": {"message": "cloud alias keyless until go-live (SOW §C.3/§0.4); 
-              Owner adds provider key", "type": "authentication_error", 
-              "code": "key_missing"}}
-5. llama-swap 转发 401 给客户端
-6. Open WebUI 显示错误消息（预期行为）
+2. llama-swap → cloud-proxy.py
+3. cloud-proxy.py 读取 config.yaml，获取：
+   - base_url: https://api.moonshot.cn/v1/chat/completions
+   - model: kimi-k3
+   - api_key_env: KIMI_API_KEY
+4. 从环境变量获取 API key（KIMI_API_KEY 已通过 systemd override 注入）
+5. 转发到 Moonshot API with Authorization: Bearer {key}
+6. 返回真实云端推理响应
+7. 客户端收到 Moonshot Kimi K3 的回答
 ```
 
-**注**：云别名激活后，`cloud-disabled` 会被 5 个独立的真实云 provider 配置替换（见下一节"云端激活路线图"）。
+**通用性**：cloud-proxy.py 自动适配任意 OpenAI 兼容端点（Azure/vLLM/自定义），无需修改代码。
+
+---
+
+## 云端激活路线图（通用）
+
+当前云端模型状态：10 个已配置（Kimi K3 已激活，其他等待 API key）
+
+**通用激活步骤**（适用于任何提供商）：
+
+1. 获取 API key（从提供商控制台）
+
+2. 创建 systemd override 注入环境变量：
+   ```bash
+   sudo mkdir -p /etc/systemd/system/llama-swap.service.d
+   
+   # OpenAI 示例
+   echo 'Environment="OPENAI_API_KEY=sk-..."' | \
+     sudo tee /etc/systemd/system/llama-swap.service.d/cloud-openai.conf
+   
+   # Azure 示例
+   echo 'Environment="AZURE_OPENAI_API_KEY=xxx"' | \
+     sudo tee /etc/systemd/system/llama-swap.service.d/cloud-azure.conf
+   ```
+
+3. 重载并重启：
+   ```bash
+   sudo systemctl daemon-reload
+   sudo systemctl restart llama-swap
+   ```
+
+4. 测试（任何云端别名）：
+   ```bash
+   curl http://127.0.0.1:8080/v1/chat/completions \
+     -H "Content-Type: application/json" \
+     -d '{"model":"cloud-gpt-4o","messages":[{"role":"user","content":"Hello"}]}'
+   ```
+
+5. 在 Open WebUI 中选择云别名，验证响应。
+
+**添加新提供商**：
+```bash
+# 只需编辑 /srv/z13/llama-swap/config.yaml，添加：
+  cloud-new-provider:
+    provider: openai  # 或 azure/anthropic/google/自定义
+    base_url: https://api.example.com/v1/chat/completions
+    model: model-name
+    api_key_env: NEW_PROVIDER_API_KEY
+    cmd: /usr/bin/python3 /srv/z13/scripts/cloud-proxy.py ${PORT}
+
+# 然后注入 key 并重启（cloud-proxy.py 自动发现新配置）
+```
 
 ---
 
@@ -290,7 +372,7 @@ curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8080/v1/models  # 期望
 curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:3000/  # 期望 200
 
 # 3. 别名清单
-curl -s http://127.0.0.1:8080/v1/models | jq -r '.data[].id' | sort  # 10 个
+curl -s http://127.0.0.1:8080/v1/models | jq -r '.data[].id' | sort  # 14 个 (4 本地 + 10 云端)
 
 # 4. GPU 占用
 rocm-smi --showmeminfo vram | grep -i used  # 期望 6-10 GB (resident 模型)
