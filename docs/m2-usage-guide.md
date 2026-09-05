@@ -267,6 +267,104 @@ python3 scripts/pdf-to-json.py document.txt --model reasoning-max
 
 ---
 
+## 云端模型激活
+
+**当前状态**：5 个云端模型已配置（Kimi K3 已激活，其他 4 个等待 API key）
+
+### 配置架构（配置驱动，单一真相源）
+
+云端模型配置在 `/srv/z13/llama-swap/config.yaml`：
+
+```yaml
+cloud-kimi-k3:
+  provider: openai
+  base_url: https://api.moonshot.cn/v1/chat/completions
+  model: kimi-k3
+  api_key_env: KIMI_API_KEY
+  cmd: /usr/bin/python3 /srv/z13/scripts/cloud-proxy.py ${PORT}
+```
+
+**cloud-proxy.py** 自动读取所有带 `provider` 字段的模型配置，无需修改脚本。
+
+### 激活云端模型（以 Kimi 为例）
+
+**方法 1：使用激活脚本（推荐）**
+
+```bash
+cd /srv/z13
+./scripts/activate-cloud.sh kimi sk-xxxxxxxxxxxxx
+```
+
+**方法 2：手动激活**
+
+```bash
+# 1. 创建 systemd override 注入 API key
+sudo mkdir -p /etc/systemd/system/llama-swap.service.d
+echo 'Environment="KIMI_API_KEY=sk-xxxxxxxxxxxxx"' | \
+  sudo tee /etc/systemd/system/llama-swap.service.d/cloud-kimi.conf
+
+# 2. 重载并重启
+sudo systemctl daemon-reload
+sudo systemctl restart llama-swap
+
+# 3. 验证
+curl http://127.0.0.1:8080/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -d '{"model":"cloud-kimi-k3","messages":[{"role":"user","content":"你好"}]}'
+```
+
+### 在 Open WebUI 中使用云端模型
+
+1. 访问 `http://127.0.0.1:3000`
+2. 在模型下拉菜单选择 `cloud-kimi-k3`（或其他云端别名）
+3. 发送消息测试
+
+**注意**：云端模型使用外部 API，会产生 API 调用费用。
+
+### 添加新的云端模型
+
+**只需编辑 config.yaml**（cloud-proxy.py 自动发现新配置）：
+
+```bash
+# 1. 编辑 /srv/z13/llama-swap/config.yaml，添加：
+#   cloud-new-model:
+#     provider: openai
+#     base_url: https://api.example.com/v1/chat/completions
+#     model: model-name
+#     api_key_env: NEW_API_KEY
+#     cmd: /usr/bin/python3 /srv/z13/scripts/cloud-proxy.py ${PORT}
+
+# 2. 注入 API key
+echo 'Environment="NEW_API_KEY=sk-xxx"' | \
+  sudo tee /etc/systemd/system/llama-swap.service.d/cloud-new.conf
+
+# 3. 重启
+sudo systemctl daemon-reload && sudo systemctl restart llama-swap
+```
+
+### 云端 vs 本地模型对比
+
+| 特性 | 本地模型 | 云端模型 |
+|---|---|---|
+| 模型 | doc-vision, utility-fast, reasoning-max | cloud-kimi-k3, cloud-deepseek-v4-pro |
+| 推理位置 | 本地 GPU (gfx1151) | 云端 API 服务器 |
+| 费用 | 免费（自有硬件） | 按 API 调用计费 |
+| 隐私 | 完全私密 | 依赖云提供商 |
+| 速度 | 2-8s | 取决于网络延迟 |
+| 离线 | ✓ 可用 | ✗ 需联网 |
+
+### 常见云端模型端点
+
+| 提供商 | base_url | 默认模型 | API key 环境变量 |
+|---|---|---|---|
+| Moonshot Kimi | https://api.moonshot.cn/v1/chat/completions | kimi-k3 | KIMI_API_KEY |
+| DeepSeek | https://api.deepseek.com/v1/chat/completions | deepseek-chat | DEEPSEEK_API_KEY |
+| Google Gemini | https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent | gemini-pro | GEMINI_API_KEY |
+| Alibaba Qwen | https://dashscope.aliyuncs.com/api/v1/services/aigc/text-generation/generation | qwen-max | QWEN_API_KEY |
+| Anthropic | https://api.anthropic.com/v1/messages | claude-fable-5 | ANTHROPIC_API_KEY |
+
+---
+
 ## MCP 服务器管理（Google Drive 等）
 
 ### 查看已注册的 MCP 服务器

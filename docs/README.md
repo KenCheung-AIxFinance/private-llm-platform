@@ -25,6 +25,7 @@
 - 使用 llama-swap API（curl / Python / Open WebUI）
 - 使用 Hermes Agent（CLI / 任务 / vault 操作）
 - 模型别名管理（查看/交换/添加）
+- **云端模型激活（Kimi、DeepSeek 等）**
 - 运行 eval harness
 - PDF→JSON 提取
 - MCP 服务器管理（Google Drive）
@@ -50,11 +51,13 @@
 
 - 从零重建系统 → [Build Manual](m2-build-manual.md)
 - **机器重启后重新激活服务** → [Usage Guide](m2-usage-guide.md) "快速启动"（含开机自启 + 三大常见故障）
+- **激活云端模型（Kimi、DeepSeek 等）** → [Usage Guide](m2-usage-guide.md) "云端模型激活"
 - 日常使用已有系统 → [Usage Guide](m2-usage-guide.md)
 - 验证系统是否满足 SOW → [Acceptance Tests](m2-acceptance-tests.md)
 - 了解 M2 架构 → [Build Manual](m2-build-manual.md) §1-4
+- 查看系统架构图 → [architecture.md](architecture.md)
 - 排查问题 → [Usage Guide](m2-usage-guide.md) "重启后的三大常见故障" / "日志和故障排除"
-- 添加新模型 → [Usage Guide](m2-usage-guide.md) "模型别名管理"
+- 添加新模型 → [Usage Guide](m2-usage-guide.md) "模型别名管理" / "云端模型激活"
 - 运行基准测试 → [Usage Guide](m2-usage-guide.md) "运行评估测试"
 
 ---
@@ -62,13 +65,14 @@
 ## 文档版本
 
 - 创建日期：2026-08-26；路径/命令实测校正：2026-08-28
-- M2 状态：COMPLETE (10/10 SOW lines)
+- M2 状态：COMPLETE (10/10 SOW lines) + 云端模型路由激活
 - 系统版本：llama-swap v249 (mostlygeek), Hermes v0.20.0 (uv venv)
-- 覆盖范围：M2 Round 1 + Round 2
+- 覆盖范围：M2 Round 1 + Round 2 + 云端模型（Kimi K3 已激活）
 - **真实路径基准**：模型在 `~/.lmstudio/models/lmstudio-community/`；llama-server 在 `/srv/z13/tools/llama.cpp/build/bin/`；Hermes 入口 `~/.local/bin/hermes`
 
 ## 相关文档
 
 - SOW 原文：`/home/norbert/SOW.pdf`
+- 架构文档：`/srv/z13/docs/architecture.md`（完整 5 层架构图）
 - 运行手册：`/srv/z13/runbook/`
 - 审计记录：`/srv/z13/vault/audits/`
