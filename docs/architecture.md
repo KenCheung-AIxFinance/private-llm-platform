@@ -396,49 +396,6 @@ hermes config get model.base_url  # 期望 http://127.0.0.1:8080/v1
 
 ---
 
-## 云端激活路线图（待 Owner 执行）
-
-当前云别名状态：5 个别名 → 1 个 stub (cloud-stub.py) → HTTP 401 keyless
-
-**激活步骤**（Owner 独立操作，§0.4）：
-
-1. 获取 API keys（保存到环境或 vault，不进 git）：
-   ```bash
-   export KIMI_API_KEY="sk-..."
-   export DEEPSEEK_API_KEY="sk-..."
-   export GEMINI_API_KEY="..."
-   ```
-
-2. 编辑 `/srv/z13/llama-swap/config.yaml`，将 `cloud-disabled` 替换为独立配置：
-   ```yaml
-   models:
-     cloud-kimi-k3:
-       provider: openai  # OpenAI 兼容
-       base_url: https://api.moonshot.cn/v1
-       model: moonshot-v1-128k
-       api_key_env: KIMI_API_KEY
-     cloud-deepseek-v4-pro:
-       provider: openai
-       base_url: https://api.deepseek.com/v1
-       model: deepseek-chat
-       api_key_env: DEEPSEEK_API_KEY
-     # ... 其他 3 个云别名
-   ```
-
-3. 重启 llama-swap：`sudo systemctl restart llama-swap`
-
-4. 测试云别名：
-   ```bash
-   curl http://127.0.0.1:8080/v1/chat/completions \
-     -H "Content-Type: application/json" \
-     -d '{"model":"cloud-kimi-k3","messages":[{"role":"user","content":"hi"}]}'
-   # 期望：真实回答（不是 401）
-   ```
-
-5. 在 Open WebUI 中选择云别名，验证响应。
-
----
-
 ## 故障排查快速参考
 
 | 症状 | 根因 | 修复 |
