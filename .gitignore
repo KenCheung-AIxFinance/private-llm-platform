@@ -50,6 +50,12 @@ store/*.db-wal
 store/*.db-shm
 !store/.gitkeep
 
+# --- Reproducible runtimes & tool caches (reinstall/regenerate on a new device;
+#     hermes state, skills, sessions and conversations STAY tracked) ---
+hermes/node/
+hermes/bin/
+hermes/cache/
+
 # --- Editor / OS ---
 .vscode/
 .idea/

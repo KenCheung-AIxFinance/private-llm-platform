@@ -170,7 +170,7 @@ curl -s http://127.0.0.1:8080/v1/models | jq '.data[] | {id, object}'
 
 应该看到：
 - 4 个本地别名（doc-vision, utility-fast, utility-embed, reasoning-max）
-- 5 个云别名（cloud-kimi-k3, cloud-deepseek-v4-pro, ...）
+- 10 个云别名（cloud-kimi-k3, cloud-gpt-4o, cloud-azure-gpt4, ...）
 
 ### 交换别名背后的模型
 

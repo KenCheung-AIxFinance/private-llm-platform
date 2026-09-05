@@ -29,7 +29,7 @@ hermes --version
 
 ---
 
-## SOW M2 项目 #1：所有别名 OpenAI+Anthropic 单端点；云别名 key-missing
+## SOW M2 项目 #1：14 个别名单端点；已激活云别名可用，未激活返回 key_missing
 
 ### 测试步骤
 
@@ -37,16 +37,23 @@ hermes --version
 # 1. 列出所有别名
 curl -s http://127.0.0.1:8080/v1/models | jq -r '.data[].id' | sort
 
-# 预期输出（9 个别名）：
-# cloud-deepseek-v4-pro
-# cloud-fable-5
-# cloud-gemini-flash
-# cloud-kimi-k3
-# cloud-qwen
-# doc-vision
-# reasoning-max
-# utility-embed
-# utility-fast
+# 预期输出（14 个别名）：
+# 4 个本地：
+#   doc-vision
+#   reasoning-max
+#   utility-embed
+#   utility-fast
+# 10 个云端：
+#   cloud-azure-gpt4
+#   cloud-custom-vllm
+#   cloud-deepseek-v4-pro
+#   cloud-fable-5
+#   cloud-gemini
+#   cloud-gpt-4o
+#   cloud-gpt-4o-mini
+#   cloud-kimi-k3
+#   cloud-ollama-cloud
+#   cloud-qwen
 ```
 
 ```bash
@@ -60,20 +67,31 @@ curl -s http://127.0.0.1:8080/v1/chat/completions \
 ```
 
 ```bash
-# 3. 测试云别名（期望 401 key-missing）
+# 3. 测试已激活的云别名（cloud-kimi-k3，应该返回真实响应或 provider 错误）
 curl -s http://127.0.0.1:8080/v1/chat/completions \
   -H "Content-Type: application/json" \
   -d '{"model":"cloud-kimi-k3","messages":[{"role":"user","content":"Hi"}],"max_tokens":10}' \
   | jq .
 
-# 预期：HTTP 200，但 error.message 包含 "key" 或 "401" 或 "keyless"
+# 预期：HTTP 200，包含 choices 或错误消息（取决于 Moonshot API 状态）
+```
+
+```bash
+# 4. 测试未激活的云别名（cloud-gpt-4o，期望 401 key-missing）
+curl -s http://127.0.0.1:8080/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -d '{"model":"cloud-gpt-4o","messages":[{"role":"user","content":"Hi"}],"max_tokens":10}' \
+  | jq -r '.error.message'
+
+# 预期：HTTP 200，error.message 包含 "OPENAI_API_KEY" 或 "key_missing"
 ```
 
 ### 验收标准
 
-- [ ] 9 个别名全部出现在 `/v1/models`
+- [ ] 14 个别名全部出现在 `/v1/models`
 - [ ] 4 个本地别名（doc-vision, utility-fast, utility-embed, reasoning-max）返回正常响应
-- [ ] 5 个云别名返回 "key missing" 或类似错误消息（不是 500 server error）
+- [ ] 已激活的云别名（cloud-kimi-k3）返回真实云端响应或 provider 特定错误（不是 generic 401）
+- [ ] 未激活的云别名（cloud-gpt-4o 等）返回 "requires {API_KEY_ENV}" 错误消息（不是 500 server error）
 
 ---
 
@@ -241,12 +259,22 @@ cat /tmp/route-test-b.log
 ```
 
 ```bash
-# 3. 测试非机密-困难路由（cloud-kimi-k3，keyless 401）
+# 3. 测试非机密-困难路由（cloud-kimi-k3，已激活 → 真实云端响应）
 sg docker -c "hermes --accept-hooks -m cloud-kimi-k3 -z 'What is the capital of France?'" \
   | tail -10 > /tmp/route-test-c.log
 
 cat /tmp/route-test-c.log
-# 预期：包含 "401" 或 "key missing" 错误（by design）
+# 预期（Kimi 已激活）：包含真实云端回答（如 "Paris"）
+# 注：若 cloud-kimi-k3 未激活，预期返回 401 key-missing（by design）
+```
+
+```bash
+# 3b.（可选）测试未激活云别名的 keyless 状态（cloud-gpt-4o，期望 401）
+curl -s http://127.0.0.1:8080/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -d '{"model":"cloud-gpt-4o","messages":[{"role":"user","content":"hi"}],"max_tokens":5}' \
+  | jq -r '.error.message'
+# 预期：包含 "OPENAI_API_KEY" / "key_missing"
 ```
 
 ```bash
@@ -266,7 +294,8 @@ tail -5 /srv/z13/hermes/audit.jsonl | jq .
 
 - [ ] 任务 A (doc-vision)：成功执行 bash 工具，返回 "12"
 - [ ] 任务 B (reasoning-max)：返回逻辑推理，推理质量高于 doc-vision
-- [ ] 任务 C (cloud-kimi-k3)：返回 401 key-missing（不是 500 server error）
+- [ ] 任务 C (cloud-kimi-k3)：已激活 → 返回真实云端回答；未激活 → 返回 401 key-missing（不是 500 server error）
+- [ ] 可选 3b：未激活云别名（cloud-gpt-4o）返回 "requires OPENAI_API_KEY" 错误（证明 keyless 路由生效）
 - [ ] `--accept-hooks` 批准模式工作（没有交互式提示）
 - [ ] 所有 3 个路由模板路径已演练（便宜/快速、机密-困难、非机密-困难）
 - [ ] 防护措施验证：gateway 关闭 ✓，portal 未登录 ✓
@@ -517,7 +546,7 @@ cat runbook/eval.md | head -20
 
 | 项目 # | 描述 | 状态 | 备注 |
 |---|---|---|---|
-| 1 | 所有别名单端点；云别名 key-missing | ☐ ✅ / ☐ ❌ | |
+| 1 | 14 个别名单端点；已激活云别名可用，未激活返回 key_missing | ☐ ✅ / ☐ ❌ | |
 | 2 | 别名交换测试 | ☐ ✅ / ☐ ❌ | |
 | 3 | llama-swap YAML 提交；§D.5 flags | ☐ ✅ / ☐ ❌ | |
 | 4 | doc-vision 3-PDF→JSON | ☐ ✅ / ☐ ❌ | |
