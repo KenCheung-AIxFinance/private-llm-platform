@@ -106,6 +106,59 @@ models:
     cmd: /usr/bin/python3 /srv/z13/scripts/cloud-proxy.py ${PORT}
     ttl: 0
 
+  # ---- OpenAI 官方模型（GPT-4, GPT-3.5 等）----
+  cloud-gpt-4o:
+    name: "OpenAI GPT-4o"
+    provider: openai
+    base_url: https://api.openai.com/v1/chat/completions
+    model: gpt-4o
+    api_key_env: OPENAI_API_KEY
+    cmd: /usr/bin/python3 /srv/z13/scripts/cloud-proxy.py ${PORT}
+    ttl: 0
+
+  cloud-gpt-4o-mini:
+    name: "OpenAI GPT-4o Mini"
+    provider: openai
+    base_url: https://api.openai.com/v1/chat/completions
+    model: gpt-4o-mini
+    api_key_env: OPENAI_API_KEY
+    cmd: /usr/bin/python3 /srv/z13/scripts/cloud-proxy.py ${PORT}
+    ttl: 0
+
+  # ---- Azure OpenAI（需要 deployment_name 和 api_version）----
+  cloud-azure-gpt4:
+    name: "Azure OpenAI GPT-4"
+    provider: azure
+    base_url: https://your-resource.openai.azure.com
+    model: gpt-4
+    deployment_name: gpt-4-deployment    # Azure 部署名
+    api_version: 2024-02-15-preview      # Azure API 版本
+    api_key_env: AZURE_OPENAI_API_KEY
+    cmd: /usr/bin/python3 /srv/z13/scripts/cloud-proxy.py ${PORT}
+    ttl: 0
+
+  # ---- 自定义 OpenAI 兼容端点（vLLM, Ollama Cloud, 私有部署等）----
+  cloud-custom-vllm:
+    name: "Custom vLLM Endpoint"
+    provider: openai
+    base_url: https://your-vllm-server.com/v1/chat/completions
+    model: meta-llama/Llama-3-70b
+    api_key_env: CUSTOM_VLLM_API_KEY
+    custom_headers:
+      X-Custom-Header: "value"    # 可选：自定义 HTTP 头
+    cmd: /usr/bin/python3 /srv/z13/scripts/cloud-proxy.py ${PORT}
+    ttl: 0
+
+  # ---- 更多自定义端点示例 ----
+  cloud-ollama-cloud:
+    name: "Ollama Cloud"
+    provider: openai
+    base_url: https://api.ollama.cloud/v1/chat/completions
+    model: llama3.1-70b
+    api_key_env: OLLAMA_CLOUD_API_KEY
+    cmd: /usr/bin/python3 /srv/z13/scripts/cloud-proxy.py ${PORT}
+    ttl: 0
+
 # ---- §D.1 model groups: keep the three utilities resident together while
 #      reasoning-max swaps in/out. VRAM budget: 13.5 + 5 + 0.6 ≈ 19 GB resident,
 #      +59 GB when reasoning-max is loaded = ~78 GB of 96 (headroom). ----

@@ -267,56 +267,170 @@ python3 scripts/pdf-to-json.py document.txt --model reasoning-max
 
 ---
 
-## 云端模型激活
+## 云端模型激活（通用提供商支持）
 
-**当前状态**：5 个云端模型已配置（Kimi K3 已激活，其他 4 个等待 API key）
+**当前状态**：10 个云端模型已配置（Kimi K3 已激活，其他等待 API key）
 
-### 配置架构（配置驱动，单一真相源）
+### 支持的提供商类型
 
-云端模型配置在 `/srv/z13/llama-swap/config.yaml`：
+系统现在支持**任意 OpenAI 兼容端点**和以下提供商类型：
+
+| provider 类型 | 适用场景 | 示例 |
+|---|---|---|
+| `openai` | OpenAI 官方、Moonshot、DeepSeek、任何 OpenAI 兼容端点 | api.openai.com, api.moonshot.cn, api.deepseek.com |
+| `azure` | Azure OpenAI | your-resource.openai.azure.com |
+| `anthropic` | Anthropic Claude | api.anthropic.com |
+| `google` | Google Gemini | generativelanguage.googleapis.com |
+| `dashscope` | Alibaba Qwen | dashscope.aliyuncs.com |
+
+**cloud-proxy.py** 自动读取 `/srv/z13/llama-swap/config.yaml` 中所有带 `provider` 字段的模型配置。
+
+### 配置示例（单配置文件）
+
+所有云端模型配置在 `/srv/z13/llama-swap/config.yaml`：
 
 ```yaml
+# OpenAI 官方
+cloud-gpt-4o:
+  provider: openai
+  base_url: https://api.openai.com/v1/chat/completions
+  model: gpt-4o
+  api_key_env: OPENAI_API_KEY
+  cmd: /usr/bin/python3 /srv/z13/scripts/cloud-proxy.py ${PORT}
+
+# Moonshot Kimi
 cloud-kimi-k3:
   provider: openai
   base_url: https://api.moonshot.cn/v1/chat/completions
   model: kimi-k3
   api_key_env: KIMI_API_KEY
   cmd: /usr/bin/python3 /srv/z13/scripts/cloud-proxy.py ${PORT}
+
+# Azure OpenAI
+cloud-azure-gpt4:
+  provider: azure
+  base_url: https://your-resource.openai.azure.com
+  model: gpt-4
+  deployment_name: gpt-4-deployment    # Azure 部署名
+  api_version: 2024-02-15-preview      # Azure API 版本
+  api_key_env: AZURE_OPENAI_API_KEY
+  cmd: /usr/bin/python3 /srv/z13/scripts/cloud-proxy.py ${PORT}
+
+# 自定义 OpenAI 兼容端点（vLLM、Ollama Cloud、私有部署）
+cloud-custom-vllm:
+  provider: openai
+  base_url: https://your-vllm-server.com/v1/chat/completions
+  model: meta-llama/Llama-3-70b
+  api_key_env: CUSTOM_VLLM_API_KEY
+  custom_headers:                       # 可选：自定义 HTTP 头
+    X-Custom-Header: "value"
+  cmd: /usr/bin/python3 /srv/z13/scripts/cloud-proxy.py ${PORT}
 ```
 
-**cloud-proxy.py** 自动读取所有带 `provider` 字段的模型配置，无需修改脚本。
+### 激活云端模型
 
-### 激活云端模型（以 Kimi 为例）
-
-**方法 1：使用激活脚本（推荐）**
-
-```bash
-cd /srv/z13
-./scripts/activate-cloud.sh kimi sk-xxxxxxxxxxxxx
-```
-
-**方法 2：手动激活**
+**通用激活方法**（适用于任何提供商）：
 
 ```bash
 # 1. 创建 systemd override 注入 API key
 sudo mkdir -p /etc/systemd/system/llama-swap.service.d
-echo 'Environment="KIMI_API_KEY=sk-xxxxxxxxxxxxx"' | \
-  sudo tee /etc/systemd/system/llama-swap.service.d/cloud-kimi.conf
+
+# OpenAI 示例
+echo 'Environment="OPENAI_API_KEY=sk-xxxxxxxxxxxxx"' | \
+  sudo tee /etc/systemd/system/llama-swap.service.d/cloud-openai.conf
+
+# Azure 示例
+echo 'Environment="AZURE_OPENAI_API_KEY=xxxxx"' | \
+  sudo tee /etc/systemd/system/llama-swap.service.d/cloud-azure.conf
 
 # 2. 重载并重启
 sudo systemctl daemon-reload
 sudo systemctl restart llama-swap
 
-# 3. 验证
+# 3. 验证（任何云端别名）
 curl http://127.0.0.1:8080/v1/chat/completions \
   -H "Content-Type: application/json" \
-  -d '{"model":"cloud-kimi-k3","messages":[{"role":"user","content":"你好"}]}'
+  -d '{"model":"cloud-gpt-4o","messages":[{"role":"user","content":"Hello"}]}'
 ```
+
+### 添加新的云端模型
+
+**只需编辑 config.yaml**（cloud-proxy.py 自动发现新配置）：
+
+```bash
+# 1. 编辑 /srv/z13/llama-swap/config.yaml，添加：
+
+  cloud-my-provider:
+    provider: openai                     # 或其他类型
+    base_url: https://api.example.com/v1/chat/completions
+    model: model-name
+    api_key_env: MY_PROVIDER_API_KEY
+    # 可选：
+    # deployment_name: xxx              # Azure 专用
+    # api_version: 2024-02-15-preview   # Azure 专用
+    # custom_headers:                   # 自定义 HTTP 头
+    #   X-Custom-Header: "value"
+    cmd: /usr/bin/python3 /srv/z13/scripts/cloud-proxy.py ${PORT}
+
+# 2. 注入 API key
+echo 'Environment="MY_PROVIDER_API_KEY=sk-xxx"' | \
+  sudo tee /etc/systemd/system/llama-swap.service.d/cloud-my-provider.conf
+
+# 3. 重启
+sudo systemctl daemon-reload && sudo systemctl restart llama-swap
+```
+
+**无需修改 cloud-proxy.py**，它自动适配所有提供商类型。
 
 ### 在 Open WebUI 中使用云端模型
 
 1. 访问 `http://127.0.0.1:3000`
-2. 在模型下拉菜单选择 `cloud-kimi-k3`（或其他云端别名）
+2. 在模型下拉菜单选择任何云端别名（cloud-kimi-k3, cloud-gpt-4o, cloud-azure-gpt4, 等）
+3. 发送消息测试
+
+### 云端 vs 本地模型对比
+
+| 特性 | 本地模型 | 云端模型 |
+|---|---|---|
+| 模型 | doc-vision, utility-fast, reasoning-max | cloud-kimi-k3, cloud-gpt-4o, cloud-azure-gpt4 |
+| 推理位置 | 本地 GPU (gfx1151) | 云端 API 服务器 |
+| 费用 | 免费（自有硬件） | 按 API 调用计费 |
+| 隐私 | 完全私密 | 依赖云提供商 |
+| 速度 | 2-8s | 取决于网络延迟 |
+| 离线 | ✓ 可用 | ✗ 需联网 |
+| 模型选择 | 固定 4 个 | 任意数量（只需配置） |
+
+### 支持的提供商端点参考
+
+| 提供商 | base_url | 默认模型 | 特殊字段 |
+|---|---|---|---|
+| OpenAI | https://api.openai.com/v1/chat/completions | gpt-4o | - |
+| Moonshot | https://api.moonshot.cn/v1/chat/completions | kimi-k3 | - |
+| DeepSeek | https://api.deepseek.com/v1/chat/completions | deepseek-chat | - |
+| Azure | https://your-resource.openai.azure.com | gpt-4 | deployment_name, api_version |
+| Anthropic | https://api.anthropic.com/v1/messages | claude-fable-5 | - |
+| Google | https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent | gemini-pro | - |
+| Qwen | https://dashscope.aliyuncs.com/api/v1/services/aigc/text-generation/generation | qwen-max | - |
+| vLLM | https://your-vllm-server.com/v1/chat/completions | 任意 | custom_headers |
+| Ollama Cloud | https://api.ollama.cloud/v1/chat/completions | llama3.1-70b | - |
+
+### 故障排除
+
+**问题**：`401 Unauthorized: key_missing`
+- **原因**：API key 未设置或环境变量名不匹配
+- **解决**：检查 `/etc/systemd/system/llama-swap.service.d/cloud-*.conf` 中的环境变量名是否与 config.yaml 中的 `api_key_env` 一致
+
+**问题**：`404 Not found the model xxx`
+- **原因**：`model` 字段的模型名不正确
+- **解决**：查看提供商文档获取正确的模型名（例如 Kimi 是 `kimi-k3`，不是 `moonshot-v1-128k`）
+
+**问题**：`502 Cloud API unreachable`
+- **原因**：base_url 错误或网络问题
+- **解决**：检查 base_url 是否正确，是否可以访问该端点
+
+---
+
+## MCP 服务器管理（Google Drive 等）
 3. 发送消息测试
 
 **注意**：云端模型使用外部 API，会产生 API 调用费用。
