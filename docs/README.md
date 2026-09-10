@@ -45,6 +45,27 @@
 
 ---
 
+# M3 — 打包平台 + 跨设备全新安装复原
+
+## 4. [Migration Readiness Certificate](migration-readiness-certificate.md) — MRC（§A.4, M3.5）
+**用途**：证明平台可移植、可全新安装复原；列出 Z13 专属组件与换机替代、精确重建序列、实测重建时间、已知障碍  
+**读者**：Owner 验收 + 迁移到第二台机器的人
+
+**复原主路径**：新机器 `git clone <repo> /srv/z13` → `git submodule update --init` → `./scripts/rebuild.sh`
+
+## M3 安装器脚本（`/srv/z13/scripts/`）
+| 脚本 | 用途 |
+|---|---|
+| `init-host.sh` | 新机初始化 + GPU driver 检测/配置（gfx1151 Vulkan / AMD / NVIDIA / cpu）+ BIOS VRAM/GTT 提示 |
+| `rebuild.sh` | **安装器主入口**：init-host → bootstrap → submodule → runtime → fetch-models → secrets → 主机位 → systemd → 验证 |
+| `fetch-models.sh` | 按 manifest 下载权重 + sha256（`--only resident` ~20GB / `--all` ~101GB）|
+| `migrate.sh` | 连续性复原到第二台机器（<2h，codeword 验证 Hermes 凭迁移记忆回答）|
+| `quiesce-state.sh` | 状态迁移前的一致 DB 快照（§B.1 静默纪律）|
+
+**配套**：`manifests/models.yaml`（权重 URL+SHA256）、`manifests/runtimes.yaml`（runtime 版本）、`systemd/z13-stack.service`（§J.1 boot-survival）
+
+---
+
 ## 快速导航
 
 **我需要...**
