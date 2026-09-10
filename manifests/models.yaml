@@ -23,10 +23,10 @@ aliases:
     source: lmstudio-community/gpt-oss-120b-GGUF
     files:
       - name: gpt-oss-120b-MXFP4-00001-of-00002.gguf
-        url: TODO_VERIFY     # confirm exact HF url before rebuild
+        url: https://huggingface.co/lmstudio-community/gpt-oss-120b-GGUF/resolve/main/gpt-oss-120b-MXFP4-00001-of-00002.gguf
         sha256: 01d8a3bc7efdaa331112e8a0a42ec9046fcee2a1dce910452aafaccb996759f3
       - name: gpt-oss-120b-MXFP4-00002-of-00002.gguf
-        url: TODO_VERIFY
+        url: https://huggingface.co/lmstudio-community/gpt-oss-120b-GGUF/resolve/main/gpt-oss-120b-MXFP4-00002-of-00002.gguf
         sha256: b7bf9fba295115d0e32951ce54911b3020dd92459b88a3908ad58479be6f7676
     fa_ok: auto              # loaded clean with -fa auto (§D.5); no crash
     notes: >
@@ -43,10 +43,10 @@ aliases:
     source: lmstudio-community/gemma-4-26B-A4B-it-QAT-GGUF
     files:
       - name: gemma-4-26B-A4B-it-QAT-Q4_0.gguf
-        url: TODO_VERIFY
+        url: https://huggingface.co/lmstudio-community/gemma-4-26B-A4B-it-QAT-GGUF/resolve/main/gemma-4-26B-A4B-it-QAT-Q4_0.gguf
         sha256: a586dac572e606b1f2ad0011f7465aa1dffdb0f6516c5b5809fab35857865389
       - name: mmproj-gemma-4-26B-A4B-it-QAT-BF16.gguf   # vision projector
-        url: TODO_VERIFY
+        url: https://huggingface.co/lmstudio-community/gemma-4-26B-A4B-it-QAT-GGUF/resolve/main/mmproj-gemma-4-26B-A4B-it-QAT-BF16.gguf
         sha256: 06429fa96309e7cf253627f09f10eee06bd74858f723e06ad09fb66d101597fd
     fa_ok: true            # verified 2026-08-02 (66.7 tok/s, no crash with -fa 1)
     preview_tok_s: 66.7    # batch profile, LM Studio llama.cpp 2.27.1 (indicative, not binding)
@@ -60,10 +60,10 @@ aliases:
     source: lmstudio-community/gemma-4-E4B-it-GGUF
     files:
       - name: gemma-4-E4B-it-Q4_K_M.gguf
-        url: TODO_VERIFY
+        url: https://huggingface.co/lmstudio-community/gemma-4-E4B-it-GGUF/resolve/main/gemma-4-E4B-it-Q4_K_M.gguf
         sha256: 0ffb122c8b6921f13cbc34186e052524d0b5803b17f4867b7197a561400b3770
       - name: mmproj-gemma-4-E4B-it-BF16.gguf
-        url: TODO_VERIFY
+        url: https://huggingface.co/lmstudio-community/gemma-4-E4B-it-GGUF/resolve/main/mmproj-gemma-4-E4B-it-BF16.gguf
         sha256: bdfc4935857658dfdc8d1adebfa3897c2fec8b3323410f4f73ade36d6efa02be
     fa_ok: auto            # ran clean with -fa auto (§D.5); batch decode 57.0 tok/s
     notes: >
@@ -92,8 +92,10 @@ aliases:
     source: lmstudio-community/Qwen3.6-35B-A3B-GGUF
     files:
       - name: Qwen3.6-35B-A3B-Q4_K_M.gguf
+        url: https://huggingface.co/lmstudio-community/Qwen3.6-35B-A3B-GGUF/resolve/main/Qwen3.6-35B-A3B-Q4_K_M.gguf
         sha256: 4ac6a06bce551257267f49ad2226f8671a22519ccc1a4dde9d5b433d1f2a410d
       - name: mmproj-Qwen3.6-35B-A3B-BF16.gguf
+        url: https://huggingface.co/lmstudio-community/Qwen3.6-35B-A3B-GGUF/resolve/main/mmproj-Qwen3.6-35B-A3B-BF16.gguf
         sha256: e5c205cec2fd28f66c3895e4040021ab994b860323c3db8531640305ff49b322
 
   # --- §C.5 MoE 候选者：Owner 评估 (M2 要求：2 个 > 100B MoE) ---

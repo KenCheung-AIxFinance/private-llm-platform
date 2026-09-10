@@ -1,0 +1,35 @@
+# manifests/runtimes.yaml — runtime versions to reproduce on a fresh host (SOW §A.3/§B.2)
+# The installer (scripts/rebuild.sh, init-host.sh) reads this to declaratively
+# reproduce the runtime dependencies that are NOT in git (weights are in
+# models.yaml; secrets are Owner-provisioned).
+# Last verified: 2026-09 (matches the live Z13).
+
+node:
+  version: "22.23.2"
+  # Hermes expects Node 22; installed via NodeSource (bootstrap.sh) or nvm.
+  npm_packages: []            # top-level npm globals, if any
+
+uv:
+  # Astral uv — https://astral.sh/uv/install.sh
+  tools:
+    - browser-use             # recreates hermes/bin/browser* absolute symlinks (§4.2 rebuild.md)
+
+llama_cpp:
+  source: https://github.com/ggml-org/llama.cpp
+  commit: 6a32c29a746a2e44de463de647f9f6661eb5086b
+  build:
+    backend: vulkan           # Mesa RADV (§D.5); -DGGML_VULKAN=ON
+    flags: "-DGGML_VULKAN=ON -DGGML_NATIVE=ON -DLLAMA_CURL=ON -DCMAKE_BUILD_TYPE=Release"
+  # prereqs (init-host.sh GPU section): mesa-vulkan-drivers libvulkan-dev
+  #   glslc glslang-tools spirv-headers spirv-tools
+
+llama_swap:
+  version: v249
+  url: https://github.com/mostlygeek/llama-swap/releases/download/v249/llama-swap_249_linux_amd64.tar.gz
+  sha256: ea3a5df228fd91a6f43f1f1ae6ab6473da7d5b696e02b7149760df6715566260
+
+hermes_agent:
+  source: https://github.com/NousResearch/hermes-agent
+  commit: a871948d8d4b0f774d4ec40467bab1078a9f28d5   # upstream main (submodule)
+  version: "0.20.0 (2026.8.3)"
+  python: "3.11"
