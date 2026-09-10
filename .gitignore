@@ -64,3 +64,6 @@ hermes/cache/
 .idea/
 *~
 .DS_Store
+
+# --- M3 state-migration staging (quiesced DB snapshots; regenerable) ---
+.backup/

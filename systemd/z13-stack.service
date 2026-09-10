@@ -1,0 +1,22 @@
+[Unit]
+Description=Z13 Compose stack (Open WebUI + §D.4 services) — §J.1 single Compose-boot unit
+# One deterministic boot anchor for the Compose stack. Requires the bare-metal serving
+# layer (llama-swap.service) up first, then brings the containers up. Container-level
+# crash-restart stays with Docker (restart: unless-stopped); this oneshot only guarantees
+# the stack is UP at boot — ordered, not two competing supervisors.
+Requires=docker.service llama-swap.service
+After=docker.service llama-swap.service network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+User=norbert
+Group=docker
+WorkingDirectory=/srv/z13
+ExecStart=/usr/bin/docker compose -f /srv/z13/compose/compose.yaml up -d --remove-orphans
+ExecStop=/usr/bin/docker compose -f /srv/z13/compose/compose.yaml down
+TimeoutStartSec=180
+
+[Install]
+WantedBy=multi-user.target
