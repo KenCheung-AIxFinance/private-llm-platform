@@ -47,6 +47,12 @@
 
 # M3 — 打包平台 + 跨设备全新安装复原
 
+## 4b. [Rebuild Handbook](m3-rebuild-handbook.md) — 新机器手动重建操作手册
+**用途**：你在第二台机器**手动**一步步复原平台（不用自动脚本，可控可理解）
+**读者**：要在新机器手动重建的 Owner
+
+**复原主路径**：clone 仓库 → `git submodule update --init` → init-host（底座+GPU）→ bootstrap → runtime（llama.cpp/llama-swap/Hermes venv）→ 权重 → secrets → 主机位 → 起服务 → 验证。含排错速查。
+
 ## 4. [Migration Readiness Certificate](migration-readiness-certificate.md) — MRC（§A.4, M3.5）
 **用途**：证明平台可移植、可全新安装复原；列出 Z13 专属组件与换机替代、精确重建序列、实测重建时间、已知障碍  
 **读者**：Owner 验收 + 迁移到第二台机器的人
